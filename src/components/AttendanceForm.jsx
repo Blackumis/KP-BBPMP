@@ -2,7 +2,23 @@ import React, { useState } from 'react';
 
 const AttendanceForm = ({ config, onReset }) => {
   const [submitted, setSubmitted] = useState(false);
+  // Separate state for password gating
+  const [accessGranted, setAccessGranted] = useState(!config.eventPassword);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
   const [provinceType, setProvinceType] = useState('jawa_tengah');
+
+  // Handle password submission for access
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (passwordInput === config.eventPassword) {
+      setAccessGranted(true);
+      setPasswordError('');
+    } else {
+      setPasswordError('Password salah. Silakan coba lagi.');
+    }
+  };
 
   // Helper date formatter
   const formatDate = (dateString, timeString) => {
@@ -19,6 +35,42 @@ const AttendanceForm = ({ config, onReset }) => {
     setSubmitted(true);
     // In a real app, API call would go here
   };
+
+  if (!accessGranted) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Akses Terbatas</h2>
+            <p className="text-gray-600 mb-6">Kegiatan <strong>{config.namaKegiatan}</strong> dilindungi kata sandi.</p>
+            
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    className="w-full text-center tracking-widest px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Masukkan Password"
+                    autoFocus
+                  />
+                </div>
+                {passwordError && <p className="text-red-600 text-sm font-medium">{passwordError}</p>}
+                
+                <button 
+                  type="submit"
+                  className="w-full bg-blue-700 text-white font-bold py-2 px-4 rounded hover:bg-blue-800 transition"
+                >
+                  Buka Absensi
+                </button>
+            </form>
+            <button onClick={onReset} className="mt-4 text-sm text-gray-500 hover:text-gray-800">Kembali</button>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -84,6 +136,56 @@ const AttendanceForm = ({ config, onReset }) => {
                     />
                   </div>
                 )}
+                
+                {config.requireUnit && (
+                   <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Unit Kerja / Instansi <span className="text-red-500">*</span></label>
+                    <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" placeholder="Nama Sekolah / Dinas / Lembaga" required />
+                  </div>
+                )}
+
+                {config.requireNIP && (
+                   <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">NIP</label>
+                    <input type="number" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" placeholder="Nomor Induk Pegawai" />
+                  </div>
+                )}
+
+                {config.requireCity && (
+                     <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Kabupaten/Kota Unit Kerja <span className="text-red-500">*</span></label>
+                      <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" required />
+                    </div>
+                )}
+
+                {config.requireDob && (
+                     <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Tempat Tanggal Lahir <span className="text-red-500">*</span></label>
+                      <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" placeholder="Kota, DD-MM-YYYY" required />
+                    </div>
+                )}
+
+                {config.requirePhone && (
+                     <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Nomor Handphone <span className="text-red-500">*</span></label>
+                      <input type="tel" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" placeholder="08..." required />
+                    </div>
+                )}
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {config.requireRank && (
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Pangkat/Golongan</label>
+                            <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" />
+                        </div>
+                    )}
+                    {config.requirePosition && (
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Jabatan</label>
+                            <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" />
+                        </div>
+                    )}
+                 </div>
 
                 {config.requireEmail && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -97,29 +199,6 @@ const AttendanceForm = ({ config, onReset }) => {
                     </div>
                   </div>
                 )}
-
-                {config.requireUnit && (
-                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Unit Kerja / Instansi <span className="text-red-500">*</span></label>
-                    <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" placeholder="Nama Sekolah / Dinas / Lembaga" required />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {config.requireDob && (
-                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Tempat Tanggal Lahir <span className="text-red-500">*</span></label>
-                      <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" placeholder="Kota, DD-MM-YYYY" required />
-                    </div>
-                  )}
-
-                  {config.requireCity && (
-                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Kota Asal <span className="text-red-500">*</span></label>
-                      <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" required />
-                    </div>
-                  )}
-                </div>
 
                 {config.requireProvince && (
                   <div className="bg-blue-50/50 p-6 rounded-xl border border-blue-100">
@@ -189,6 +268,31 @@ const AttendanceForm = ({ config, onReset }) => {
                        )}
                      </div>
                   </div>
+                )}
+                
+                {config.requireSignature && (
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">e-Signature / Tanda Tangan <span className="text-red-500">*</span></label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition cursor-pointer relative bg-white">
+                            <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
+                             <svg className="w-10 h-10 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            <span className="text-blue-600 font-medium">Upload gambar tanda tangan</span>
+                            <p className="text-xs text-gray-400 mt-1">PNG, JPG (Max. 2MB)</p>
+                        </div>
+                    </div>
+                )}
+
+                {config.requirePernyataan && (
+                    <div className="flex items-start bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <div className="flex h-6 items-center">
+                            <input id="pernyataan" type="checkbox" className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-600" required />
+                        </div>
+                        <div className="ml-3">
+                            <label htmlFor="pernyataan" className="text-sm text-gray-700 font-medium">
+                                Menyetujui bahwa seluruh data yang tertera sesuai dengan identitas asli dan penulisan dalam standar penulisan EYD v5 <span className="text-red-500">*</span>
+                            </label>
+                        </div>
+                    </div>
                 )}
 
                 <div className="pt-6">

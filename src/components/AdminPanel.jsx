@@ -13,10 +13,17 @@ const AdminPanel = ({ onSaveConfig }) => {
     // Isian Absensi Config (toggles)
     requireName: true,
     requireEmail: true,
+    requirePhone: true,
     requireUnit: true,
+    requireNIP: false,
+    requireRank: false, 
+    requirePosition: false,
     requireDob: true,
     requireCity: true,
-    requireProvince: true, // Specifically the drop down logic
+    requireProvince: true,
+    requireSignature: true,
+    requirePernyataan: true,
+    eventPassword: '', // Password for the event (optional)
   });
 
   const handleChange = (e) => {
@@ -164,6 +171,25 @@ const AdminPanel = ({ onSaveConfig }) => {
         {/* Step 2: Konfigurasi Absensi */}
         {activeStep === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+               <h3 className="text-md font-bold text-blue-800">Pengaturan Keamanan</h3>
+               <p className="text-sm text-blue-700 mt-1">
+                 Anda dapat menambahkan password untuk membatasi akses ke formulir absensi ini. 
+                 Jika dikosongkan, formulir dapat diakses oleh siapa saja.
+               </p>
+               <div className="mt-4">
+                 <label className="block text-sm font-semibold text-gray-700 mb-1">Password Absensi (Opsional)</label>
+                 <input 
+                    type="text" 
+                    name="eventPassword" 
+                    value={formData.eventPassword} 
+                    onChange={handleChange}
+                    className="w-full md:w-1/2 border border-blue-200 bg-white rounded-md px-3 py-2 text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="Contoh: SEMINAR2024"
+                 />
+               </div>
+             </div>
+
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
               <p className="text-sm text-yellow-700">
                 Data di bawah ini adalah kolom yang akan muncul pada form absensi peserta. Centang untuk mengaktifkan.
@@ -172,22 +198,40 @@ const AdminPanel = ({ onSaveConfig }) => {
 
             <div className="grid grid-cols-1 gap-4">
               {[
-                { id: 'requireName', label: 'Nama Peserta' },
-                { id: 'requireEmail', label: 'Email & Konfirmasi Email' },
-                { id: 'requireUnit', label: 'Unit Kerja' },
-                { id: 'requireDob', label: 'Tempat Tanggal Lahir' },
-                { id: 'requireCity', label: 'Kota Asal' },
-                { id: 'requireProvince', label: 'Provinsi Unit Kerja ' },
+                { id: 'requireName', label: 'Nama (wajib)', mandatory: true },
+                { id: 'requireUnit', label: 'Unit Kerja (wajib)', mandatory: true },
+                { id: 'requireNIP', label: 'NIP', mandatory: false },
+                { id: 'requireCity', label: 'Kabupaten/Kota Unit Kerja (wajib)', mandatory: true },
+                { id: 'requireDob', label: 'Tanggal Lahir (wajib)', mandatory: true },
+                { id: 'requirePhone', label: 'Nomor Handphone (wajib)', mandatory: true },
+                { id: 'requireRank', label: 'Pangkat/Golongan', mandatory: false },
+                { id: 'requirePosition', label: 'Jabatan', mandatory: false },
+                { id: 'requireEmail', label: 'E-mail (wajib)', mandatory: true },
+                { id: 'requireSignature', label: 'e-Signature atau ttd elektronik peserta (wajib)', mandatory: true },
+                { id: 'requirePernyataan', label: 'Check box pernyataan (wajib)', mandatory: true },
+                { id: 'requireProvince', label: 'Provinsi Unit Kerja', mandatory: false },
               ].map((field) => (
-                <label key={field.id} className="flex items-center p-3 border rounded hover:bg-gray-50 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    name={field.id} 
-                    checked={formData[field.id]} 
-                    onChange={handleChange}
-                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-3"
-                  />
-                  <span className="text-gray-700 font-medium">{field.label}</span>
+                <label key={field.id} className={`flex items-center p-3 border rounded ${!field.mandatory ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-50 cursor-not-allowed opacity-80'}`}>
+                  { !field.mandatory ? (
+                    <input 
+                      type="checkbox" 
+                      name={field.id} 
+                      checked={formData[field.id]} 
+                      onChange={handleChange}
+                      className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-3"
+                    />
+                  ) : (
+                    <input 
+                      type="checkbox" 
+                      checked={true} 
+                      readOnly
+                      disabled
+                      className="h-5 w-5 text-gray-400 border-gray-300 rounded mr-3 bg-gray-200"
+                    />
+                  )}
+                  <span className={`font-medium ${field.mandatory ? 'text-gray-600' : 'text-gray-700'}`}>
+                    {field.label}
+                  </span>
                 </label>
               ))}
             </div>
