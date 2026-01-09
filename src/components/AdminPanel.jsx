@@ -1,16 +1,23 @@
 import React, { useState } from 'react';
+import { eventsAPI } from '../services/api';
 
 const AdminPanel = ({ onSaveConfig }) => {
   const [activeStep, setActiveStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
-    // Data Kegiatan
-    nomorSurat: '',
-    namaKegiatan: '',
-    tanggalKegiatan: '',
-    batasWaktu: '',
-    template: 'default',
+    // Data Kegiatan (matches database schema)
+    nomor_surat: '',
+    nama_kegiatan: '',
+    tanggal_mulai: '',
+    tanggal_selesai: '',
+    jam_mulai: '',
+    jam_selesai: '',
+    batas_waktu_absensi: '',
+    templateFile: null,
+    templatePreview: null,
     
-    // Isian Absensi Config (toggles)
+    // Form Config (stored as JSON in database)
     requireName: true,
     requireEmail: true,
     requirePhone: true,
@@ -23,7 +30,7 @@ const AdminPanel = ({ onSaveConfig }) => {
     requireProvince: true,
     requireSignature: true,
     requirePernyataan: true,
-    eventPassword: '', // Password for the event (optional)
+    eventPassword: '',
   });
 
   const handleChange = (e) => {
@@ -34,10 +41,52 @@ const AdminPanel = ({ onSaveConfig }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSaveConfig(formData);
-    alert("Konfigurasi Kegiatan berhasil disimpan dan dipublikasikan!");
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Build form_config object
+      const form_config = {
+        requireName: formData.requireName,
+        requireEmail: formData.requireEmail,
+        requirePhone: formData.requirePhone,
+        requireUnit: formData.requireUnit,
+        requireNIP: formData.requireNIP,
+        requireRank: formData.requireRank,
+        requirePosition: formData.requirePosition,
+        requireDob: formData.requireDob,
+        requireCity: formData.requireCity,
+        requireProvince: formData.requireProvince,
+        requireSignature: formData.requireSignature,
+        requirePernyataan: formData.requirePernyataan,
+        eventPassword: formData.eventPassword,
+      };
+
+      const eventData = {
+        nama_kegiatan: formData.nama_kegiatan,
+        nomor_surat: formData.nomor_surat,
+        tanggal_mulai: formData.tanggal_mulai,
+        tanggal_selesai: formData.tanggal_selesai || formData.tanggal_mulai,
+        jam_mulai: formData.jam_mulai,
+        jam_selesai: formData.jam_selesai,
+        batas_waktu_absensi: formData.batas_waktu_absensi,
+        form_config,
+        template: formData.templateFile,
+      };
+
+      const response = await eventsAPI.create(eventData);
+      
+      if (response.success) {
+        alert("Kegiatan berhasil dibuat!");
+        onSaveConfig(response.data);
+      }
+    } catch (err) {
+      setError(err.message || 'Gagal menyimpan kegiatan');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -46,6 +95,13 @@ const AdminPanel = ({ onSaveConfig }) => {
         <span className="bg-blue-100 text-blue-700 py-1 px-3 rounded text-sm mr-3">Admin</span>
         Konfigurasi Kegiatan 
       </h2>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+          <button onClick={() => setError(null)} className="ml-2 text-red-600 hover:text-red-800">✕</button>
+        </div>
+      )}
 
       {/* Progress Stepper */}
       <div className="flex mb-8">
@@ -69,11 +125,11 @@ const AdminPanel = ({ onSaveConfig }) => {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Nomor Surat Kegiatan</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Nomor Surat Kegiatan <span className="text-red-500">*</span></label>
                 <input 
                   type="text" 
-                  name="nomorSurat" 
-                  value={formData.nomorSurat} 
+                  name="nomor_surat" 
+                  value={formData.nomor_surat} 
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   placeholder="Contoh: 001/BBPMP/2024"
@@ -81,11 +137,11 @@ const AdminPanel = ({ onSaveConfig }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Nama Kegiatan</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Nama Kegiatan <span className="text-red-500">*</span></label>
                 <input 
                   type="text" 
-                  name="namaKegiatan" 
-                  value={formData.namaKegiatan} 
+                  name="nama_kegiatan" 
+                  value={formData.nama_kegiatan} 
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   placeholder="Nama lengkap kegiatan"
@@ -93,22 +149,54 @@ const AdminPanel = ({ onSaveConfig }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Tanggal Kegiatan</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Tanggal Mulai <span className="text-red-500">*</span></label>
                 <input 
                   type="date" 
-                  name="tanggalKegiatan" 
-                  value={formData.tanggalKegiatan} 
+                  name="tanggal_mulai" 
+                  value={formData.tanggal_mulai} 
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Batas Waktu Absensi</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Tanggal Selesai</label>
+                <input 
+                  type="date" 
+                  name="tanggal_selesai" 
+                  value={formData.tanggal_selesai} 
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Jam Mulai <span className="text-red-500">*</span></label>
+                <input 
+                  type="time" 
+                  name="jam_mulai" 
+                  value={formData.jam_mulai} 
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Jam Selesai <span className="text-red-500">*</span></label>
+                <input 
+                  type="time" 
+                  name="jam_selesai" 
+                  value={formData.jam_selesai} 
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Batas Waktu Absensi <span className="text-red-500">*</span></label>
                 <input 
                   type="datetime-local" 
-                  name="batasWaktu" 
-                  value={formData.batasWaktu} 
+                  name="batas_waktu_absensi" 
+                  value={formData.batas_waktu_absensi} 
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   required
@@ -125,16 +213,20 @@ const AdminPanel = ({ onSaveConfig }) => {
                    onChange={(e) => {
                       const file = e.target.files[0];
                       if(file) {
-                        // Create a preview URL
-                        setFormData(prev => ({ ...prev, template: URL.createObjectURL(file), templateName: file.name })); 
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          templateFile: file,
+                          templatePreview: URL.createObjectURL(file),
+                          templateName: file.name 
+                        })); 
                       }
                    }}
                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                  />
                  
-                 {formData.template && formData.template !== 'default' ? (
+                 {formData.templatePreview ? (
                     <div className="relative w-full h-32 md:h-48 bg-gray-100 rounded-md overflow-hidden">
-                       <img src={formData.template} alt="Preview" className="w-full h-full object-cover" />
+                       <img src={formData.templatePreview} alt="Preview" className="w-full h-full object-cover" />
                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-20 pointer-events-none">
                           <span className="text-white font-medium">Klik untuk ganti gambar</span>
                        </div>
@@ -246,9 +338,20 @@ const AdminPanel = ({ onSaveConfig }) => {
               </button>
               <button 
                 type="submit" 
-                className="bg-green-600 text-white px-8 py-2 rounded-md hover:bg-green-700 transition font-bold shadow-md transform hover:-translate-y-0.5"
+                disabled={isLoading}
+                className="bg-green-600 text-white px-8 py-2 rounded-md hover:bg-green-700 transition font-bold shadow-md transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
-                Simpan & Publikasikan
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Menyimpan...
+                  </>
+                ) : (
+                  'Simpan Kegiatan'
+                )}
               </button>
             </div>
           </div>
