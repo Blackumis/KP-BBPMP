@@ -17,4 +17,5 @@ router.post('/send/:attendance_id', authenticateToken, isAdmin, sendCertificate)
 router.post('/send-event/:event_id', authenticateToken, isAdmin, sendEventCertificates);
 router.get('/history/:event_id', authenticateToken, isAdmin, getCertificateHistory);
 
+
 export default router;

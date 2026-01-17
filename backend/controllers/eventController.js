@@ -274,6 +274,31 @@ export const deleteEvent = async (req, res) => {
   }
 };
 
+export const activateEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [existing] = await pool.query(
+      'SELECT id FROM events WHERE id = ?',
+      [id]
+    );
+
+    if (!existing.length) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    await pool.query(
+      "UPDATE events SET status = 'active' WHERE id = ?",
+      [id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Activate event error:', err);
+    res.status(500).json({ success: false });
+  }
+};
+
 // Generate attendance form link
 export const generateFormLink = async (req, res) => {
   try {
