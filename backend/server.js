@@ -14,6 +14,7 @@ import eventRoutes from "./routes/eventRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
 import referenceRoutes from "./routes/referenceRoutes.js";
+import templateRoutes from "./routes/templateRoutes.js";
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use("/api/events", eventRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/reference", referenceRoutes);
+app.use("/api/templates", templateRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
