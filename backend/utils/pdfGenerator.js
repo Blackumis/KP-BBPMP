@@ -90,6 +90,19 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
       doc.fontSize(10)
          .text(`Nomor Sertifikat: ${attendanceData.nomor_sertifikat}`, 0, 450, { align: 'center' });
 
+      // Validation link - pointing to frontend
+      const validationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
+      doc.fontSize(9)
+         .fillColor('blue')
+         .text('Validasi Sertifikat:', 0, 470, { align: 'center', continued: false })
+         .fillColor('blue')
+         .text(validationUrl, 0, 485, { 
+           align: 'center',
+           link: validationUrl,
+           underline: true
+         })
+         .fillColor('black');
+
       // Additional info at bottom
       doc.fontSize(9)
          .text(`NIP: ${attendanceData.nip || '-'}`, 100, 520, { align: 'left' });

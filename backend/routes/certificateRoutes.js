@@ -4,13 +4,19 @@ import {
   generateEventCertificates,
   sendCertificate,
   sendEventCertificates,
-  getCertificateHistory
+  getCertificateHistory,
+  validateCertificate,
+  downloadCertificate
 } from '../controllers/certificateController.js';
 import { authenticateToken, isAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// All certificate routes require admin authentication
+// Public routes for certificate validation and download (no authentication required)
+router.get('/validate/:certificate_number', validateCertificate);
+router.get('/download/:certificate_number', downloadCertificate);
+
+// All other certificate routes require admin authentication
 router.post('/generate/:attendance_id', authenticateToken, isAdmin, generateSingleCertificate);
 router.post('/generate-event/:event_id', authenticateToken, isAdmin, generateEventCertificates);
 router.post('/send/:attendance_id', authenticateToken, isAdmin, sendCertificate);

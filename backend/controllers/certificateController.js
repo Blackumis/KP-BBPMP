@@ -2,6 +2,7 @@ import pool from '../config/database.js';
 import { generateCertificate } from '../utils/pdfGenerator.js';
 import { sendCertificateEmail } from '../utils/emailService.js';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -391,5 +392,180 @@ export const getCertificateHistory = async (req, res) => {
       success: false,
       message: 'Server error'
     });
+  }
+};
+
+// Validate certificate by certificate number
+export const validateCertificate = async (req, res) => {
+  try {
+    const { certificate_number } = req.params;
+    
+    console.log('Validating certificate:', certificate_number);
+
+    // Get certificate data from database
+    const [attendances] = await pool.query(
+      `SELECT 
+        a.id,
+        a.nama_lengkap,
+        a.unit_kerja,
+        a.nip,
+        a.provinsi,
+        a.kabupaten_kota,
+        a.tanggal_lahir,
+        a.nomor_hp,
+        a.pangkat_golongan,
+        a.jabatan,
+        a.email,
+        a.nomor_sertifikat,
+        a.status,
+        a.certificate_path,
+        a.sent_at,
+        a.created_at,
+        e.nama_kegiatan,
+        e.nomor_surat,
+        e.tanggal_mulai,
+        e.tanggal_selesai,
+        e.jam_mulai,
+        e.jam_selesai
+       FROM attendances a
+       JOIN events e ON a.event_id = e.id
+       WHERE a.nomor_sertifikat = ?`,
+      [certificate_number]
+    );
+
+    console.log('Found attendances:', attendances.length);
+
+    if (attendances.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sertifikat tidak ditemukan',
+        valid: false
+      });
+    }
+
+    const data = attendances[0];
+
+    // Format dates for response
+    const formatDate = (date) => {
+      return new Date(date).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    };
+
+    res.json({
+      success: true,
+      valid: true,
+      message: 'Sertifikat valid',
+      data: {
+        participant: {
+          nama_lengkap: data.nama_lengkap,
+          unit_kerja: data.unit_kerja,
+          nip: data.nip,
+          provinsi: data.provinsi,
+          kabupaten_kota: data.kabupaten_kota,
+          tanggal_lahir: data.tanggal_lahir ? formatDate(data.tanggal_lahir) : null,
+          nomor_hp: data.nomor_hp,
+          pangkat_golongan: data.pangkat_golongan,
+          jabatan: data.jabatan,
+          email: data.email
+        },
+        event: {
+          nama_kegiatan: data.nama_kegiatan,
+          nomor_surat: data.nomor_surat,
+          tanggal_mulai: formatDate(data.tanggal_mulai),
+          tanggal_selesai: formatDate(data.tanggal_selesai),
+          jam_mulai: data.jam_mulai,
+          jam_selesai: data.jam_selesai
+        },
+        certificate: {
+          nomor_sertifikat: data.nomor_sertifikat,
+          status: data.status,
+          tanggal_diterbitkan: formatDate(data.created_at),
+          tanggal_dikirim: data.sent_at ? formatDate(data.sent_at) : null,
+          certificate_path: data.certificate_path
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Validate certificate error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      valid: false
+    });
+  }
+};
+
+// Download certificate PDF by certificate number
+export const downloadCertificate = async (req, res) => {
+  try {
+    const { certificate_number } = req.params;
+
+    // Get certificate data
+    const [attendances] = await pool.query(
+      `SELECT a.*, e.nama_kegiatan
+       FROM attendances a
+       JOIN events e ON a.event_id = e.id
+       WHERE a.nomor_sertifikat = ?`,
+      [certificate_number]
+    );
+
+    if (attendances.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sertifikat tidak ditemukan'
+      });
+    }
+
+    const attendance = attendances[0];
+
+    // Check if certificate file exists
+    if (!attendance.certificate_path) {
+      return res.status(404).json({
+        success: false,
+        message: 'File sertifikat belum dibuat'
+      });
+    }
+
+    const certificatePath = path.join(__dirname, '..', attendance.certificate_path);
+
+    // Check if file exists
+    if (!fs.existsSync(certificatePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'File sertifikat tidak ditemukan'
+      });
+    }
+
+    // Set headers for download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Sertifikat-${attendance.nama_lengkap}.pdf"`);
+
+    // Send file
+    const fileStream = fs.createReadStream(certificatePath);
+    
+    fileStream.on('error', (err) => {
+      console.error('File stream error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: 'Gagal membaca file sertifikat'
+        });
+      }
+    });
+
+    fileStream.pipe(res);
+
+  } catch (error) {
+    console.error('Download certificate error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Gagal mengunduh sertifikat'
+      });
+    }
   }
 };

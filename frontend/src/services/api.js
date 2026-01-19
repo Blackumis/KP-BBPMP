@@ -132,13 +132,27 @@ export const referenceAPI = {
 export const certificateAPI = {
   // Single attendance certificate operations
   generateSingle: async (attendanceId) => fetchWithAuth(`/certificates/generate/${attendanceId}`, { method: "POST" }),
-  downloadSingle: async (attendanceId) => fetchWithAuth(`/certificates/download/${attendanceId}`, { method: "GET" }),
+  
+  // Download certificate by certificate number (public endpoint, returns blob)
+  downloadByCertificateNumber: async (certificateNumber) => {
+    const encodedCertNumber = encodeURIComponent(certificateNumber);
+    const response = await fetch(`${API_BASE_URL}/certificates/download/${encodedCertNumber}`);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || "Failed to download certificate");
+    }
+    return await response.blob();
+  },
+  
   sendSingle: async (attendanceId) => fetchWithAuth(`/certificates/send/${attendanceId}`, { method: "POST" }),
 
   // Event-level certificate operations
   generateEvent: async (eventId) => fetchWithAuth(`/certificates/generate-event/${eventId}`, { method: "POST" }),
   sendEvent: async (eventId) => fetchWithAuth(`/certificates/send-event/${eventId}`, { method: "POST" }),
   getHistory: async (eventId) => fetchWithAuth(`/certificates/history/${eventId}`, { method: "GET" }),
+  
+  // Validate certificate (public endpoint)
+  validate: async (certificateNumber) => fetchPublic(`/certificates/validate/${certificateNumber}`),
 };
 
 export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, certificate: certificateAPI };
