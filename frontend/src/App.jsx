@@ -8,6 +8,7 @@ import DaftarKegiatanPage from "./pages/daftarkegiatanPage";
 import AttendancePage from "./pages/attendancePage";
 import AttendancelistPage from "./pages/attendancelistPage";
 import AdminPage from "./pages/adminPage";
+import ValidasiSertifikat from "./pages/ValidasiSertifikat";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { authAPI } from "./services/api";
 import "./index.css";
@@ -33,50 +34,118 @@ export default function App() {
   }, [location.pathname]);
 
   return (
-    <MainLayout
-      isAuthenticated={isAuth}
-      user={user}
-      onLogout={() => {
-        authAPI.logout();
-        navigate("/login", { replace: true });
-      }}
-    >
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
+    <Routes>
+      {/* Public route without MainLayout - Standalone validation page */}
+      <Route path="/validasi/*" element={<ValidasiSertifikat />} />
 
-        {/* Public */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/attendance/:id/:name" element={<AttendancePage />} />
+      {/* Public route - Login (with layout) */}
+      <Route
+        path="/login"
+        element={
+          <MainLayout
+            isAuthenticated={isAuth}
+            user={user}
+            onLogout={() => {
+              authAPI.logout();
+              navigate("/login", { replace: true });
+            }}
+          >
+            <LoginPage />
+          </MainLayout>
+        }
+      />
 
-        {/* Protected */}
-        <Route
-          path="/daftarkegiatan"
-          element={
+      {/* Public route - Attendance (with layout) */}
+      <Route
+        path="/attendance/:id/:name"
+        element={
+          <MainLayout
+            isAuthenticated={isAuth}
+            user={user}
+            onLogout={() => {
+              authAPI.logout();
+              navigate("/login", { replace: true });
+            }}
+          >
+            <AttendancePage />
+          </MainLayout>
+        }
+      />
+
+      {/* Protected routes (with layout) */}
+      <Route
+        path="/daftarkegiatan"
+        element={
+          <MainLayout
+            isAuthenticated={isAuth}
+            user={user}
+            onLogout={() => {
+              authAPI.logout();
+              navigate("/login", { replace: true });
+            }}
+          >
             <ProtectedRoute>
               <DaftarKegiatanPage />
             </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/attendancelist/:id/:name"
-          element={
+          </MainLayout>
+        }
+      />
+
+      <Route
+        path="/attendancelist/:id/:name"
+        element={
+          <MainLayout
+            isAuthenticated={isAuth}
+            user={user}
+            onLogout={() => {
+              authAPI.logout();
+              navigate("/login", { replace: true });
+            }}
+          >
             <ProtectedRoute>
               <AttendancelistPage />
             </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/*"
-          element={
+          </MainLayout>
+        }
+      />
+
+      <Route
+        path="/admin/*"
+        element={
+          <MainLayout
+            isAuthenticated={isAuth}
+            user={user}
+            onLogout={() => {
+              authAPI.logout();
+              navigate("/login", { replace: true });
+            }}
+          >
             <ProtectedRoute>
               <AdminPage />
             </ProtectedRoute>
-          }
-        />
+          </MainLayout>
+        }
+      />
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </MainLayout>
+      {/* Home/Root - redirects to login or daftarkegiatan */}
+      <Route
+        path="/"
+        element={
+          <MainLayout
+            isAuthenticated={isAuth}
+            user={user}
+            onLogout={() => {
+              authAPI.logout();
+              navigate("/login", { replace: true });
+            }}
+          >
+            <LoginPage />
+          </MainLayout>
+        }
+      />
+
+      {/* Catch-all - redirect to home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
