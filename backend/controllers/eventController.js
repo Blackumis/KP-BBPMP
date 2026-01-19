@@ -42,21 +42,39 @@ export const createEvent = async (req, res) => {
       });
     }
 
-    // Handle template upload
+    // Handle template source (upload or template)
+    const { template_source = 'upload', template_id } = req.body;
     let template_path = null;
-    if (req.file) {
+    let final_template_id = null;
+
+    if (template_source === 'upload' && req.file) {
       template_path = 'uploads/templates/' + req.file.filename;
+    } else if (template_source === 'template' && template_id) {
+      // Verify template exists
+      const [templateCheck] = await pool.query(
+        'SELECT id, image_path FROM certificate_templates WHERE id = ? AND is_active = TRUE',
+        [template_id]
+      );
+      if (templateCheck.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected template not found or inactive'
+        });
+      }
+      final_template_id = template_id;
+      template_path = templateCheck[0].image_path;
     }
 
     // Insert event
     const [result] = await pool.query(
       `INSERT INTO events 
        (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
-        batas_waktu_absensi, template_sertifikat, form_config, created_by, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+        batas_waktu_absensi, template_sertifikat, template_id, template_source, form_config, created_by, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
+        final_template_id, template_source,
         JSON.stringify(form_config || {}), req.user.id
       ]
     );
@@ -194,17 +212,43 @@ export const updateEvent = async (req, res) => {
       });
     }
 
-    // Handle template upload
+    // Handle template source (upload or template)
+    const { template_source, template_id } = req.body;
     let template_path = existing[0].template_sertifikat;
-    if (req.file) {
-      // Delete old template if exists
-      if (template_path) {
-        const oldPath = path.join(__dirname, '..', template_path);
+    let final_template_id = existing[0].template_id;
+    let final_template_source = template_source || existing[0].template_source || 'upload';
+
+    if (template_source === 'upload' && req.file) {
+      // Delete old uploaded template if it was an upload (not from template library)
+      if (existing[0].template_source === 'upload' && existing[0].template_sertifikat) {
+        const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
         }
       }
       template_path = 'uploads/templates/' + req.file.filename;
+      final_template_id = null;
+    } else if (template_source === 'template' && template_id) {
+      // Verify template exists
+      const [templateCheck] = await pool.query(
+        'SELECT id, image_path FROM certificate_templates WHERE id = ? AND is_active = TRUE',
+        [template_id]
+      );
+      if (templateCheck.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected template not found or inactive'
+        });
+      }
+      // Delete old uploaded template if switching from upload to template
+      if (existing[0].template_source === 'upload' && existing[0].template_sertifikat) {
+        const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+      final_template_id = template_id;
+      template_path = templateCheck[0].image_path;
     }
 
     // Update event
@@ -212,11 +256,12 @@ export const updateEvent = async (req, res) => {
       `UPDATE events SET 
        nama_kegiatan = ?, nomor_surat = ?, tanggal_mulai = ?, tanggal_selesai = ?,
        jam_mulai = ?, jam_selesai = ?, batas_waktu_absensi = ?, template_sertifikat = ?,
-       form_config = ?, status = ?
+       template_id = ?, template_source = ?, form_config = ?, status = ?
        WHERE id = ?`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
+        final_template_id, final_template_source,
         JSON.stringify(form_config || {}), status || existing[0].status, id
       ]
     );
