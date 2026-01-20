@@ -45,7 +45,6 @@ export const createEvent = async (req, res) => {
     // Handle template source (upload or template)
     const { template_source = 'upload', template_id } = req.body;
     let template_path = null;
-    let final_template_id = null;
 
     if (template_source === 'upload' && req.file) {
       template_path = 'uploads/templates/' + req.file.filename;
@@ -61,7 +60,6 @@ export const createEvent = async (req, res) => {
           message: 'Selected template not found or inactive'
         });
       }
-      final_template_id = template_id;
       template_path = templateCheck[0].image_path;
     }
 
@@ -69,12 +67,11 @@ export const createEvent = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO events 
        (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
-        batas_waktu_absensi, template_sertifikat, template_id, template_source, form_config, created_by, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+        batas_waktu_absensi, template_sertifikat, form_config, created_by, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
-        final_template_id, template_source,
         JSON.stringify(form_config || {}), req.user.id
       ]
     );
@@ -215,19 +212,16 @@ export const updateEvent = async (req, res) => {
     // Handle template source (upload or template)
     const { template_source, template_id } = req.body;
     let template_path = existing[0].template_sertifikat;
-    let final_template_id = existing[0].template_id;
-    let final_template_source = template_source || existing[0].template_source || 'upload';
 
     if (template_source === 'upload' && req.file) {
-      // Delete old uploaded template if it was an upload (not from template library)
-      if (existing[0].template_source === 'upload' && existing[0].template_sertifikat) {
+      // Delete old uploaded template if exists
+      if (existing[0].template_sertifikat) {
         const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
         }
       }
       template_path = 'uploads/templates/' + req.file.filename;
-      final_template_id = null;
     } else if (template_source === 'template' && template_id) {
       // Verify template exists
       const [templateCheck] = await pool.query(
@@ -240,14 +234,13 @@ export const updateEvent = async (req, res) => {
           message: 'Selected template not found or inactive'
         });
       }
-      // Delete old uploaded template if switching from upload to template
-      if (existing[0].template_source === 'upload' && existing[0].template_sertifikat) {
+      // Delete old uploaded template if switching to template
+      if (existing[0].template_sertifikat && existing[0].template_sertifikat.startsWith('uploads/')) {
         const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
         }
       }
-      final_template_id = template_id;
       template_path = templateCheck[0].image_path;
     }
 
@@ -256,12 +249,11 @@ export const updateEvent = async (req, res) => {
       `UPDATE events SET 
        nama_kegiatan = ?, nomor_surat = ?, tanggal_mulai = ?, tanggal_selesai = ?,
        jam_mulai = ?, jam_selesai = ?, batas_waktu_absensi = ?, template_sertifikat = ?,
-       template_id = ?, template_source = ?, form_config = ?, status = ?
+       form_config = ?, status = ?
        WHERE id = ?`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
-        final_template_id, final_template_source,
         JSON.stringify(form_config || {}), status || existing[0].status, id
       ]
     );
