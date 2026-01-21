@@ -1,4 +1,5 @@
 import express from "express";
+import { generateEventAttendanceReport } from "../controllers/attendanceReportController.js";
 import { getEventForm, submitAttendance, getEventAttendances, getAttendanceById, updateAttendance, deleteAttendance } from "../controllers/attendanceController.js";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 
@@ -15,5 +16,8 @@ router.get("/event/:event_id", authenticateToken, isAdmin, getEventAttendances);
 router.get("/:id", authenticateToken, isAdmin, getAttendanceById);
 router.put("/:id", authenticateToken, isAdmin, updateAttendance);
 router.delete("/:id", authenticateToken, isAdmin, deleteAttendance);
+
+// Generate Report
+router.get("/events/:event_id/attendance-report", authenticateToken, isAdmin, generateEventAttendanceReport);
 
 export default router;

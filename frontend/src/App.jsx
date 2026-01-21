@@ -144,8 +144,9 @@ export default function App() {
         }
       />
 
-      {/* Catch-all - redirect to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </MainLayout>
   );
 }

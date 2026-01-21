@@ -147,6 +147,12 @@ export const attendanceAPI = {
   },
   delete: async (id) => fetchWithAuth(`/attendance/${id}`, { method: "DELETE" }),
 };
+export const reportAPI = {
+  generateEventAttendance: async (eventId) =>
+    fetchWithAuth(`/attendance/events/${eventId}/attendance-report`, {
+      method: "GET",
+    }),
+};
 
 export const referenceAPI = {
   getKabupatenKota: async () => {

@@ -69,8 +69,8 @@ const AttendanceList = ({ event, onBack }) => {
                   certificate_url: response.data?.certificate_url,
                   nomor_sertifikat: response.data?.nomor_sertifikat || a.nomor_sertifikat,
                 }
-              : a
-          )
+              : a,
+          ),
         );
       }
     } catch (err) {
@@ -256,7 +256,7 @@ const AttendanceList = ({ event, onBack }) => {
           </button>
         </td>
       </tr>
-    `
+    `,
       )
       .join("");
 
@@ -325,6 +325,35 @@ const AttendanceList = ({ event, onBack }) => {
         document.body.removeChild(modal);
       }
     });
+  };
+
+  const handleGenerateAttendanceReport = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance/events/${event.id}/attendance-report`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Gagal download laporan");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `laporan-absensi-${event.nama_kegiatan.replace(/\s+/g, "_")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message || "Gagal download laporan", "error");
+    }
   };
 
   const handleRefresh = async () => {
@@ -407,6 +436,21 @@ const AttendanceList = ({ event, onBack }) => {
           >
             {eventLoading.viewHistory && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
             Lihat Riwayat Sertifikat
+          </button>
+          <button
+            onClick={handleGenerateAttendanceReport}
+            disabled={eventLoading.generateReport || isLoading || attendances.length === 0}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {eventLoading.generateReport && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                fillRule="evenodd"
+                d="M4 4a2 2 0 012-2h5.586A2 2 0 0113 2.586l3.414 3.414A2 2 0 0117 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm8 0v3h3l-3-3zM8 11a1 1 0 000 2h4a1 1 0 100-2H8z"
+                clipRule="evenodd"
+              />
+            </svg>
+            PDF Report Absensi
           </button>
         </div>
       </div>

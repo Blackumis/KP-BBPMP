@@ -7,25 +7,9 @@ node_modules/
 # Environment & Secrets
 # ===================================
 .env
-.env.local
-.env.*.local
-!.env.example
-
-# ===================================
-# User Uploads & Generated Files
-# ===================================
-uploads/*
-!uploads/.gitkeep
-!uploads/templates/
-uploads/signatures/*
-!uploads/signatures/.gitkeep
-certificates/*
-!certificates/.gitkeep
-
-# ===================================
-# Logs
-# ===================================
-logs/
+uploads/
+certificates/
+reports/
 *.log
 npm-debug.log*
 
