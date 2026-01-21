@@ -24,6 +24,9 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [newTemplate, setNewTemplate] = useState({ name: "", description: "", image: null, preview: null });
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, template: null });
+  const [deletingTemplate, setDeletingTemplate] = useState(false);
   const [formData, setFormData] = useState({
     // Data Kegiatan (matches database schema)
     nomor_surat: "",
@@ -60,6 +63,16 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     loadTemplates();
   }, []);
 
+  // Auto-dismiss notification after 4 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   const loadTemplates = async () => {
     setLoadingTemplates(true);
     try {
@@ -71,6 +84,33 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       console.warn("Failed to load templates:", err);
     } finally {
       setLoadingTemplates(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (template) => {
+    setDeletingTemplate(true);
+    try {
+      const response = await templatesAPI.delete(template.id);
+      if (response.success) {
+        setNotification({ type: "success", message: `Template "${template.name}" berhasil dihapus!` });
+        // If the deleted template was selected, clear the selection
+        if (formData.templateId === template.id) {
+          setFormData((prev) => ({
+            ...prev,
+            templateId: null,
+            templatePreview: null,
+            templateName: null,
+          }));
+        }
+        loadTemplates(); // Reload templates
+      } else {
+        setNotification({ type: "error", message: response.message || "Gagal menghapus template" });
+      }
+    } catch (err) {
+      setNotification({ type: "error", message: "Gagal menghapus template: " + err.message });
+    } finally {
+      setDeletingTemplate(false);
+      setDeleteConfirm({ show: false, template: null });
     }
   };
 
@@ -491,22 +531,24 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                           return (
                             <div
                               key={template.id}
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  templateId: template.id,
-                                  templatePreview: imageUrl,
-                                  templateName: template.name,
-                                  templateFile: null,
-                                }));
-                              }}
-                              className={`cursor-pointer rounded-lg overflow-hidden transition-all shadow-sm hover:shadow-md ${
+                              className={`relative cursor-pointer rounded-lg overflow-hidden transition-all shadow-sm hover:shadow-md group ${
                                 isSelected 
                                   ? "ring-2 ring-blue-500 ring-offset-2 bg-white" 
                                   : "bg-white border border-gray-200 hover:border-blue-300"
                               }`}
                             >
-                              <div className="relative h-20 bg-gray-100">
+                              <div 
+                                onClick={() => {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    templateId: template.id,
+                                    templatePreview: imageUrl,
+                                    templateName: template.name,
+                                    templateFile: null,
+                                  }));
+                                }}
+                                className="relative h-20 bg-gray-100"
+                              >
                                 <img src={imageUrl} alt={template.name} className="w-full h-full object-cover" />
                                 {isSelected && (
                                   <div className="absolute inset-0 bg-blue-600/20 flex items-center justify-center">
@@ -518,8 +560,34 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                                   </div>
                                 )}
                               </div>
-                              <div className="p-2 border-t border-gray-100">
-                                <p className={`text-xs font-medium truncate ${isSelected ? "text-blue-700" : "text-gray-700"}`}>{template.name}</p>
+                              <div className="p-2 border-t border-gray-100 flex items-center justify-between">
+                                <p 
+                                  onClick={() => {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      templateId: template.id,
+                                      templatePreview: imageUrl,
+                                      templateName: template.name,
+                                      templateFile: null,
+                                    }));
+                                  }}
+                                  className={`text-xs font-medium truncate flex-1 ${isSelected ? "text-blue-700" : "text-gray-700"}`}
+                                >
+                                  {template.name}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirm({ show: true, template });
+                                  }}
+                                  className="ml-1 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                                  title="Hapus template"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
                               </div>
                             </div>
                           );
@@ -591,17 +659,16 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
 
             <div className="grid grid-cols-1 gap-4">
               {[
-                { id: "requireName", label: "Nama (wajib)", mandatory: true },
-                { id: "requireUnit", label: "Unit Kerja (wajib)", mandatory: true },
+                { id: "requireName", label: "Nama", mandatory: true },
+                { id: "requireUnit", label: "Unit Kerja", mandatory: true },
                 { id: "requireNIP", label: "NIP", mandatory: false },
-                { id: "requireCity", label: "Kabupaten/Kota Unit Kerja (wajib)", mandatory: true },
-                { id: "requireDob", label: "Tanggal Lahir (wajib)", mandatory: true },
-                { id: "requirePhone", label: "Nomor Handphone (wajib)", mandatory: true },
+                { id: "requireCity", label: "Kabupaten/Kota Unit Kerja", mandatory: true },
+                { id: "requireDob", label: "Tanggal Lahir", mandatory: true },
+                { id: "requirePhone", label: "Nomor Handphone", mandatory: true },
                 { id: "requireRank", label: "Pangkat/Golongan", mandatory: false },
                 { id: "requirePosition", label: "Jabatan", mandatory: false },
-                { id: "requireEmail", label: "E-mail (wajib)", mandatory: true },
-                { id: "requireSignature", label: "e-Signature atau ttd elektronik peserta (wajib)", mandatory: true },
-                { id: "requirePernyataan", label: "Check box pernyataan (wajib)", mandatory: true },
+                { id: "requireEmail", label: "E-mail", mandatory: true },
+                { id: "requireSignature", label: "e-Signature atau ttd elektronik peserta", mandatory: true },
                 { id: "requireProvince", label: "Provinsi Unit Kerja", mandatory: false },
               ].map((field) => (
                 <label key={field.id} className={`flex items-center p-3 border rounded ${!field.mandatory ? "hover:bg-gray-50 cursor-pointer" : "bg-gray-50 cursor-not-allowed opacity-80"}`}>
@@ -642,6 +709,111 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
           </div>
         )}
       </form>
+
+      {/* Notification Component */}
+      {/* Inline Notification */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-down">
+          <div
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${
+              notification.type === "success"
+                ? "bg-green-50 border-green-200 text-green-800"
+                : notification.type === "error"
+                ? "bg-red-50 border-red-200 text-red-800"
+                : notification.type === "warning"
+                ? "bg-yellow-50 border-yellow-200 text-yellow-800"
+                : "bg-blue-50 border-blue-200 text-blue-800"
+            }`}
+          >
+            {notification.type === "success" && (
+              <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            )}
+            {notification.type === "error" && (
+              <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            )}
+            {notification.type === "warning" && (
+              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            )}
+            {notification.type === "info" && (
+              <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            )}
+            <span className="font-medium text-sm">{notification.message}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-2 text-gray-400 hover:text-gray-600 transition"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm border-t-4 border-red-500">
+            <div className="p-5">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Hapus Template</h3>
+              </div>
+              <p className="text-gray-600 mb-2">
+                Apakah Anda yakin ingin menghapus template <strong>"{deleteConfirm.template?.name}"</strong>?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 p-4 bg-gray-50 rounded-b-lg border-t">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm({ show: false, template: null })}
+                disabled={deletingTemplate}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition font-medium disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteTemplate(deleteConfirm.template)}
+                disabled={deletingTemplate}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition font-medium disabled:opacity-50 flex items-center"
+              >
+                {deletingTemplate ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Menghapus...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Hapus
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add New Template Modal */}
       {showTemplateModal && (
@@ -753,13 +925,13 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                       image: newTemplate.image,
                     });
                     if (response.success) {
-                      alert("Template berhasil ditambahkan!");
+                      setNotification({ type: "success", message: "Template berhasil ditambahkan!" });
                       setShowTemplateModal(false);
                       setNewTemplate({ name: "", description: "", image: null, preview: null });
                       loadTemplates(); // Reload templates
                     }
                   } catch (err) {
-                    alert("Gagal menyimpan template: " + err.message);
+                    setNotification({ type: "error", message: "Gagal menyimpan template: " + err.message });
                   } finally {
                     setSavingTemplate(false);
                   }
