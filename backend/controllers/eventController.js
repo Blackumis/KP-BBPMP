@@ -45,6 +45,7 @@ export const createEvent = async (req, res) => {
     // Handle template source (upload or template)
     const { template_source = 'upload', template_id } = req.body;
     let template_path = null;
+    let final_template_id = null;
 
     if (template_source === 'upload' && req.file) {
       template_path = 'uploads/templates/' + req.file.filename;
@@ -60,10 +61,11 @@ export const createEvent = async (req, res) => {
           message: 'Selected template not found or inactive'
         });
       }
+      final_template_id = template_id;
       template_path = templateCheck[0].image_path;
     }
 
-    // Insert event
+    // Insert event (template_id and template_source columns may not exist yet - using template_sertifikat for path)
     const [result] = await pool.query(
       `INSERT INTO events 
        (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
@@ -214,8 +216,9 @@ export const updateEvent = async (req, res) => {
     let template_path = existing[0].template_sertifikat;
 
     if (template_source === 'upload' && req.file) {
-      // Delete old uploaded template if exists
-      if (existing[0].template_sertifikat) {
+      // Only delete old file if it was a custom upload (starts with uploads/templates/)
+      // and it's not a template library file
+      if (existing[0].template_sertifikat && existing[0].template_sertifikat.includes('template-')) {
         const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
@@ -234,8 +237,8 @@ export const updateEvent = async (req, res) => {
           message: 'Selected template not found or inactive'
         });
       }
-      // Delete old uploaded template if switching to template
-      if (existing[0].template_sertifikat && existing[0].template_sertifikat.startsWith('uploads/')) {
+      // Only delete old file if it was a custom upload (contains 'template-' which is the prefix for uploaded files)
+      if (existing[0].template_sertifikat && existing[0].template_sertifikat.includes('template-')) {
         const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);

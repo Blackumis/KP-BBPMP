@@ -43,7 +43,7 @@ Sebelum instalasi, pastikan komputer Anda memiliki:
 
 - **Node.js** versi 18 atau lebih baru ([Download](https://nodejs.org/))
 - **MySQL** versi 8.0 atau lebih baru ([Download](https://dev.mysql.com/downloads/))
-- **Git** (opsional, untuk clone repository)
+
 
 Untuk mengecek versi Node.js:
 ```bash
