@@ -86,22 +86,21 @@ const AttendanceList = ({ event, onBack }) => {
    */
   const handleDownloadCertificate = async (attendance) => {
     // Check if certificate exists
-    if (!attendance.file_path && !attendance.certificate_url) {
+    if (!attendance.nomor_sertifikat) {
       showNotification(`Sertifikat untuk ${attendance.nama_lengkap} belum dibuat. Silakan buat terlebih dahulu.`, "warning");
       return;
     }
 
     try {
       setButtonLoading(attendance.id, "download", true);
-      const certificateUrl = attendance.certificate_url || attendance.file_path;
-
-      if (certificateUrl) {
-        downloadPDF(certificateUrl, `sertifikat_${attendance.nama_lengkap.replace(/\s+/g, "_")}.pdf`);
-        showNotification("Sertifikat sedang diunduh", "success");
-      }
+      
+      // Use the certificate number to download
+      const blob = await certificateAPI.downloadByCertificateNumber(attendance.nomor_sertifikat);
+      downloadPDF(blob, `Sertifikat-${attendance.nama_lengkap.replace(/\s+/g, "_")}.pdf`);
+      showNotification("Sertifikat berhasil diunduh", "success");
     } catch (err) {
       console.error("Error downloading certificate:", err);
-      showNotification("Gagal mengunduh sertifikat", "error");
+      showNotification(err.message || "Gagal mengunduh sertifikat", "error");
     } finally {
       setButtonLoading(attendance.id, "download", false);
     }
@@ -522,7 +521,7 @@ const AttendanceList = ({ event, onBack }) => {
                       {/* Download Button */}
                       <button
                         onClick={() => handleDownloadCertificate(a)}
-                        disabled={isButtonLoading(a.id, "download") || (!a.file_path && !a.certificate_url)}
+                        disabled={isButtonLoading(a.id, "download") || !a.nomor_sertifikat}
                         title={a.nomor_sertifikat ? "Unduh sertifikat" : "Sertifikat belum dibuat"}
                         className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium hover:bg-green-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition duration-150"
                       >
@@ -533,7 +532,7 @@ const AttendanceList = ({ event, onBack }) => {
                       {/* Send Button */}
                       <button
                         onClick={() => handleSendCertificate(a)}
-                        disabled={isButtonLoading(a.id, "send") || (!a.file_path && !a.certificate_url && !a.nomor_sertifikat)}
+                        disabled={isButtonLoading(a.id, "send") || !a.nomor_sertifikat}
                         title={a.nomor_sertifikat ? "Kirim sertifikat via email" : "Sertifikat belum dibuat"}
                         className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium hover:bg-orange-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition duration-150"
                       >

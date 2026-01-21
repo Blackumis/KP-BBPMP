@@ -149,7 +149,7 @@ export const submitAttendance = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Attendance submitted successfully",
+      message: "Absensi berhasil disimpan",
       data: {
         id: result.insertId,
         nomor_sertifikat,

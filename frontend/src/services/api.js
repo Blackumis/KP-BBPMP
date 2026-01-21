@@ -75,7 +75,12 @@ export const eventsAPI = {
     formData.append("jam_selesai", eventData.jam_selesai);
     formData.append("batas_waktu_absensi", eventData.batas_waktu_absensi);
     formData.append("form_config", JSON.stringify(eventData.form_config || {}));
-    if (eventData.template instanceof File) formData.append("template", eventData.template);
+    formData.append("template_source", eventData.template_source || "upload");
+    if (eventData.template_source === "template" && eventData.template_id) {
+      formData.append("template_id", eventData.template_id);
+    } else if (eventData.template instanceof File) {
+      formData.append("template", eventData.template);
+    }
     return fetchWithAuth("/events", { method: "POST", body: formData });
   },
   update: async (id, eventData) => {
@@ -90,6 +95,29 @@ export const eventsAPI = {
   delete: async (id) => fetchWithAuth(`/events/${id}`, { method: "DELETE" }),
   generateLink: async (id) => fetchWithAuth(`/events/${id}/generate-link`, { method: "POST" }),
   activate: (id) => fetchWithAuth(`/events/${id}/activate`, { method: "PATCH" }),
+};
+
+export const templatesAPI = {
+  getAll: async (activeOnly = true) => {
+    return fetchWithAuth(`/templates?active_only=${activeOnly}`);
+  },
+  getById: async (id) => fetchWithAuth(`/templates/${id}`),
+  create: async (templateData) => {
+    const formData = new FormData();
+    formData.append("name", templateData.name);
+    if (templateData.description) formData.append("description", templateData.description);
+    if (templateData.image instanceof File) formData.append("image", templateData.image);
+    return fetchWithAuth("/templates", { method: "POST", body: formData });
+  },
+  update: async (id, templateData) => {
+    const formData = new FormData();
+    if (templateData.name) formData.append("name", templateData.name);
+    if (templateData.description !== undefined) formData.append("description", templateData.description);
+    if (templateData.is_active !== undefined) formData.append("is_active", templateData.is_active);
+    if (templateData.image instanceof File) formData.append("image", templateData.image);
+    return fetchWithAuth(`/templates/${id}`, { method: "PUT", body: formData });
+  },
+  delete: async (id) => fetchWithAuth(`/templates/${id}`, { method: "DELETE" }),
 };
 
 export const attendanceAPI = {
@@ -138,13 +166,27 @@ export const referenceAPI = {
 export const certificateAPI = {
   // Single attendance certificate operations
   generateSingle: async (attendanceId) => fetchWithAuth(`/certificates/generate/${attendanceId}`, { method: "POST" }),
-  downloadSingle: async (attendanceId) => fetchWithAuth(`/certificates/download/${attendanceId}`, { method: "GET" }),
+  
+  // Download certificate by certificate number (public endpoint, returns blob)
+  downloadByCertificateNumber: async (certificateNumber) => {
+    const encodedCertNumber = encodeURIComponent(certificateNumber);
+    const response = await fetch(`${API_BASE_URL}/certificates/download/${encodedCertNumber}`);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || "Failed to download certificate");
+    }
+    return await response.blob();
+  },
+  
   sendSingle: async (attendanceId) => fetchWithAuth(`/certificates/send/${attendanceId}`, { method: "POST" }),
 
   // Event-level certificate operations
   generateEvent: async (eventId) => fetchWithAuth(`/certificates/generate-event/${eventId}`, { method: "POST" }),
   sendEvent: async (eventId) => fetchWithAuth(`/certificates/send-event/${eventId}`, { method: "POST" }),
   getHistory: async (eventId) => fetchWithAuth(`/certificates/history/${eventId}`, { method: "GET" }),
+  
+  // Validate certificate (public endpoint)
+  validate: async (certificateNumber) => fetchPublic(`/certificates/validate/${certificateNumber}`),
 };
 
-export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, certificate: certificateAPI };
+export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, certificate: certificateAPI, templates: templatesAPI };

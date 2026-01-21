@@ -42,10 +42,25 @@ export const createEvent = async (req, res) => {
       });
     }
 
-    // Handle template upload
+    // Handle template source (upload or template)
+    const { template_source = 'upload', template_id } = req.body;
     let template_path = null;
-    if (req.file) {
+
+    if (template_source === 'upload' && req.file) {
       template_path = 'uploads/templates/' + req.file.filename;
+    } else if (template_source === 'template' && template_id) {
+      // Verify template exists
+      const [templateCheck] = await pool.query(
+        'SELECT id, image_path FROM certificate_templates WHERE id = ? AND is_active = TRUE',
+        [template_id]
+      );
+      if (templateCheck.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected template not found or inactive'
+        });
+      }
+      template_path = templateCheck[0].image_path;
     }
 
     // Insert event
@@ -194,17 +209,39 @@ export const updateEvent = async (req, res) => {
       });
     }
 
-    // Handle template upload
+    // Handle template source (upload or template)
+    const { template_source, template_id } = req.body;
     let template_path = existing[0].template_sertifikat;
-    if (req.file) {
-      // Delete old template if exists
-      if (template_path) {
-        const oldPath = path.join(__dirname, '..', template_path);
+
+    if (template_source === 'upload' && req.file) {
+      // Delete old uploaded template if exists
+      if (existing[0].template_sertifikat) {
+        const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
         }
       }
       template_path = 'uploads/templates/' + req.file.filename;
+    } else if (template_source === 'template' && template_id) {
+      // Verify template exists
+      const [templateCheck] = await pool.query(
+        'SELECT id, image_path FROM certificate_templates WHERE id = ? AND is_active = TRUE',
+        [template_id]
+      );
+      if (templateCheck.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected template not found or inactive'
+        });
+      }
+      // Delete old uploaded template if switching to template
+      if (existing[0].template_sertifikat && existing[0].template_sertifikat.startsWith('uploads/')) {
+        const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+      template_path = templateCheck[0].image_path;
     }
 
     // Update event

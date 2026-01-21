@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { eventsAPI } from "../services/api";
+import { eventsAPI, templatesAPI } from "../services/api";
 
 const formatDate = (value) => {
   if (!value) return "";
@@ -19,6 +19,11 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
   const [activeStep, setActiveStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({ name: "", description: "", image: null, preview: null });
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [formData, setFormData] = useState({
     // Data Kegiatan (matches database schema)
     nomor_surat: "",
@@ -28,6 +33,8 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     jam_mulai: "",
     jam_selesai: "",
     batas_waktu_absensi: "",
+    templateSource: "upload", // 'upload' or 'template'
+    templateId: null,
     templateFile: null,
     templatePreview: null,
     templateName: null,
@@ -47,6 +54,25 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     requirePernyataan: true,
     eventPassword: "",
   });
+
+  // Load templates on mount
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const response = await templatesAPI.getAll(true);
+      if (response.success) {
+        setTemplates(response.data || []);
+      }
+    } catch (err) {
+      console.warn("Failed to load templates:", err);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
 
   useEffect(() => {
     // Revoke object URL when templatePreview changes or component unmounts
@@ -91,6 +117,8 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       batas_waktu_absensi: formatDateTimeLocal(editEvent.batas_waktu_absensi),
       jam_mulai: editEvent.jam_mulai || prev.jam_mulai,
       jam_selesai: editEvent.jam_selesai || prev.jam_selesai,
+      templateSource: editEvent.template_source || "upload",
+      templateId: editEvent.template_id || null,
       templateFile: null,
       templatePreview: templatePreviewUrl,
       templateName: editEvent.template_sertifikat ? editEvent.template_sertifikat.split("/").pop() : prev.templateName,
@@ -154,6 +182,8 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
         jam_selesai: formData.jam_selesai,
         batas_waktu_absensi: formData.batas_waktu_absensi,
         form_config,
+        template_source: formData.templateSource,
+        template_id: formData.templateId,
         template: formData.templateFile,
       };
 
@@ -330,75 +360,200 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Template / Background Sertifikat</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition relative overflow-hidden group">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      setFormData((prev) => {
-                        // Revoke previous object URL to avoid memory leaks (only if it's a blob URL)
-                        if (prev.templatePreview && prev.templatePreview.startsWith('blob:')) {
-                          try {
-                            URL.revokeObjectURL(prev.templatePreview);
-                            console.log("Revoked previous template preview URL", prev.templatePreview);
-                          } catch (err) {
-                            console.warn("Failed to revoke previous template preview URL", err);
-                          }
-                        }
-
-                        const url = URL.createObjectURL(file);
-                        console.log("Created template preview URL", url);
-
-                        return {
-                          ...prev,
-                          templateFile: file,
-                          templatePreview: url,
-                          templateName: file.name,
-                        };
-                      });
-                    }
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                />
-
-                {formData.templatePreview ? (
-                  <div className="relative w-full h-32 md:h-48 bg-gray-100 rounded-md overflow-hidden">
-                    <img
-                      src={formData.templatePreview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                      onLoad={() => console.log("Template preview loaded", formData.templatePreview)}
-                      onError={() => {
-                        console.error("Template preview failed to load", formData.templatePreview);
-                        setFormData((prev) => ({ ...prev, templatePreview: null, templateName: null }));
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-20 pointer-events-none">
-                      <span className="text-white font-medium">Klik untuk ganti gambar</span>
-                    </div>
+              
+              {/* Source Toggle - Styled like tabs */}
+              <div className="flex mb-4">
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, templateSource: "upload", templateId: null }))}
+                  className={`flex-1 py-3 px-4 text-sm font-semibold transition-all border-b-4 ${
+                    formData.templateSource === "upload"
+                      ? "border-blue-600 text-blue-700 bg-blue-50"
+                      : "border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Upload Baru
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center pointer-events-none">
-                    <div className="h-12 w-12 text-gray-400 mb-2">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        ></path>
-                      </svg>
-                    </div>
-                    <p className="text-sm text-gray-600 font-medium">Klik untuk upload gambar sertifikat</p>
-                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG (Max. 5MB)</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, templateSource: "template", templateFile: null }))}
+                  className={`flex-1 py-3 px-4 text-sm font-semibold transition-all border-b-4 ${
+                    formData.templateSource === "template"
+                      ? "border-blue-600 text-blue-700 bg-blue-50"
+                      : "border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Pilih Template
                   </div>
-                )}
+                </button>
               </div>
-              {formData.templateName && (
-                <p className="text-xs text-green-600 mt-2 flex items-center">
-                  <span className="mr-1">✓</span> File terpilih: {formData.templateName}
+
+              {/* Upload Section */}
+              {formData.templateSource === "upload" && (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition relative overflow-hidden group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setFormData((prev) => {
+                          if (prev.templatePreview && prev.templatePreview.startsWith('blob:')) {
+                            try {
+                              URL.revokeObjectURL(prev.templatePreview);
+                            } catch (err) {
+                              console.warn("Failed to revoke previous template preview URL", err);
+                            }
+                          }
+                          const url = URL.createObjectURL(file);
+                          return {
+                            ...prev,
+                            templateFile: file,
+                            templatePreview: url,
+                            templateName: file.name,
+                            templateId: null,
+                          };
+                        });
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+
+                  {formData.templatePreview ? (
+                    <div className="relative w-full h-32 md:h-48 bg-gray-100 rounded-md overflow-hidden">
+                      <img
+                        src={formData.templatePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={() => setFormData((prev) => ({ ...prev, templatePreview: null, templateName: null }))}
+                      />
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-20 pointer-events-none">
+                        <span className="text-white font-medium">Klik untuk ganti gambar</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center pointer-events-none">
+                      <div className="h-12 w-12 text-gray-400 mb-2">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-600 font-medium">Klik untuk upload gambar sertifikat</p>
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG (Max. 5MB)</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Template Selection Section */}
+              {formData.templateSource === "template" && (
+                <div>
+                  {loadingTemplates ? (
+                    <div className="text-center py-8 text-gray-500 border border-gray-200 rounded-lg bg-gray-50">
+                      <svg className="animate-spin h-8 w-8 mx-auto mb-2 text-blue-600" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <p className="text-sm">Memuat template...</p>
+                    </div>
+                  ) : templates.length === 0 ? (
+                    <div className="text-center py-10 border border-gray-200 rounded-lg bg-gray-50">
+                      <div className="h-16 w-16 mx-auto mb-4 text-gray-300">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                      </div>
+                      <p className="text-gray-500 mb-4">Belum ada template tersimpan</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowTemplateModal(true)}
+                        className="bg-blue-600 text-white px-5 py-2.5 rounded-md hover:bg-blue-700 transition text-sm font-medium shadow-sm"
+                      >
+                        + Tambah Template Baru
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                        {templates.map((template) => {
+                          const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/api\/?$/i, "");
+                          const imageUrl = `${apiBase}/${template.image_path}`;
+                          const isSelected = formData.templateId === template.id;
+                          return (
+                            <div
+                              key={template.id}
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  templateId: template.id,
+                                  templatePreview: imageUrl,
+                                  templateName: template.name,
+                                  templateFile: null,
+                                }));
+                              }}
+                              className={`cursor-pointer rounded-lg overflow-hidden transition-all shadow-sm hover:shadow-md ${
+                                isSelected 
+                                  ? "ring-2 ring-blue-500 ring-offset-2 bg-white" 
+                                  : "bg-white border border-gray-200 hover:border-blue-300"
+                              }`}
+                            >
+                              <div className="relative h-20 bg-gray-100">
+                                <img src={imageUrl} alt={template.name} className="w-full h-full object-cover" />
+                                {isSelected && (
+                                  <div className="absolute inset-0 bg-blue-600/20 flex items-center justify-center">
+                                    <div className="bg-blue-600 text-white rounded-full p-1.5">
+                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2 border-t border-gray-100">
+                                <p className={`text-xs font-medium truncate ${isSelected ? "text-blue-700" : "text-gray-700"}`}>{template.name}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowTemplateModal(true)}
+                        className="mt-3 w-full border border-dashed border-gray-300 bg-white text-gray-600 px-4 py-2.5 rounded-lg hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition text-sm font-medium flex items-center justify-center"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Tambah Template Baru
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {formData.templateName && formData.templateSource === "upload" && (
+                <p className="text-xs text-green-600 mt-3 flex items-center bg-green-50 px-3 py-2 rounded-md">
+                  <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  File terpilih: {formData.templateName}
+                </p>
+              )}
+              {formData.templateId && formData.templateSource === "template" && (
+                <p className="text-xs text-green-600 mt-3 flex items-center bg-green-50 px-3 py-2 rounded-md">
+                  <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Template dipilih: {formData.templateName}
                 </p>
               )}
             </div>
@@ -487,6 +642,151 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
           </div>
         )}
       </form>
+
+      {/* Add New Template Modal */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md border-t-4 border-blue-600">
+            <div className="flex items-center justify-between p-5 border-b bg-gray-50">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Tambah Template Baru
+              </h3>
+              <button
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setNewTemplate({ name: "", description: "", image: null, preview: null });
+                }}
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full p-1 transition"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Nama Template <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newTemplate.name}
+                  onChange={(e) => setNewTemplate((prev) => ({ ...prev, name: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  placeholder="Contoh: Sertifikat Seminar 2024"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Deskripsi</label>
+                <textarea
+                  value={newTemplate.description}
+                  onChange={(e) => setNewTemplate((prev) => ({ ...prev, description: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  rows="2"
+                  placeholder="Deskripsi singkat template (opsional)"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Gambar Template <span className="text-red-500">*</span>
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 relative hover:border-blue-400 hover:bg-blue-50/50 transition group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const url = URL.createObjectURL(file);
+                        setNewTemplate((prev) => {
+                          if (prev.preview) URL.revokeObjectURL(prev.preview);
+                          return { ...prev, image: file, preview: url };
+                        });
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  {newTemplate.preview ? (
+                    <div className="relative h-36 bg-gray-100 rounded-md overflow-hidden">
+                      <img src={newTemplate.preview} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                        <span className="text-white text-sm font-medium">Klik untuk ganti</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <div className="h-12 w-12 mx-auto mb-3 text-gray-400 group-hover:text-blue-500 transition">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-600 font-medium">Klik untuk pilih gambar</p>
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG (Max. 5MB)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-5 border-t bg-gray-50">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setNewTemplate({ name: "", description: "", image: null, preview: null });
+                }}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-md transition font-medium"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={savingTemplate || !newTemplate.name || !newTemplate.image}
+                onClick={async () => {
+                  setSavingTemplate(true);
+                  try {
+                    const response = await templatesAPI.create({
+                      name: newTemplate.name,
+                      description: newTemplate.description,
+                      image: newTemplate.image,
+                    });
+                    if (response.success) {
+                      alert("Template berhasil ditambahkan!");
+                      setShowTemplateModal(false);
+                      setNewTemplate({ name: "", description: "", image: null, preview: null });
+                      loadTemplates(); // Reload templates
+                    }
+                  } catch (err) {
+                    alert("Gagal menyimpan template: " + err.message);
+                  } finally {
+                    setSavingTemplate(false);
+                  }
+                }}
+                className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center font-medium shadow-sm"
+              >
+                {savingTemplate ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Menyimpan...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Simpan Template
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

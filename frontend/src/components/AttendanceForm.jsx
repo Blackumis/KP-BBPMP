@@ -407,7 +407,7 @@ const AttendanceForm = ({ eventId, onReset }) => {
             </p>
           </div>
         )}
-        <p className="text-gray-500 text-sm mb-8">Sertifikat akan dikirimkan ke email terdaftar setelah acara selesai.</p>
+        <p className="text-gray-500 text-sm mb-8">Sertifikat akan dikirimkan ke email terdaftar setelah kegiatan selesai.</p>
         <button
           onClick={() => {
             setSubmitted(false);
