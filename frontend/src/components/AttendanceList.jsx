@@ -430,14 +430,6 @@ const AttendanceList = ({ event, onBack }) => {
           </button>
 
           <button
-            onClick={handleViewCertificateHistory}
-            disabled={eventLoading.viewHistory || isLoading}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {eventLoading.viewHistory && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
-            Lihat Riwayat Sertifikat
-          </button>
-          <button
             onClick={handleGenerateAttendanceReport}
             disabled={eventLoading.generateReport || isLoading || attendances.length === 0}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"

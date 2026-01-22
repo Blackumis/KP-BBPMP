@@ -636,7 +636,7 @@ const AttendanceForm = ({ eventId, onReset }) => {
                           <option value="">-- Pilih Kabupaten / Kota --</option>
                           {kabupatenList.map((kab) => (
                             <option key={kab.id} value={kab.nama}>
-                              {kab.tipe === "kota" ? "Kota" : "Kab."} {kab.nama}
+                              {kab.nama}
                             </option>
                           ))}
                         </select>
