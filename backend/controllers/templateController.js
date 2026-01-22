@@ -193,10 +193,11 @@ export const deleteTemplate = async (req, res) => {
       });
     }
     
-    // Check if template is used by any events
+    // Check if template is used by any events (check BOTH template_id and image_path for backward compatibility)
+    // Some older events may not have template_id set but still use the template via template_sertifikat path
     const [events] = await pool.query(
-      'SELECT COUNT(*) as count FROM events WHERE template_id = ?',
-      [id]
+      'SELECT COUNT(*) as count FROM events WHERE template_id = ? OR template_sertifikat = ?',
+      [id, existing[0].image_path]
     );
     
     if (events[0].count > 0) {

@@ -65,16 +65,16 @@ export const createEvent = async (req, res) => {
       template_path = templateCheck[0].image_path;
     }
 
-    // Insert event (template_id and template_source columns may not exist yet - using template_sertifikat for path)
+    // Insert event with template_id and template_source to properly track library templates
     const [result] = await pool.query(
       `INSERT INTO events 
        (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
-        batas_waktu_absensi, template_sertifikat, form_config, created_by, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+        batas_waktu_absensi, template_sertifikat, template_id, template_source, form_config, created_by, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
-        JSON.stringify(form_config || {}), req.user.id
+        final_template_id, template_source, JSON.stringify(form_config || {}), req.user.id
       ]
     );
 
@@ -214,17 +214,34 @@ export const updateEvent = async (req, res) => {
     // Handle template source (upload or template)
     const { template_source, template_id } = req.body;
     let template_path = existing[0].template_sertifikat;
+    let final_template_id = existing[0].template_id;
+    let final_template_source = existing[0].template_source || 'upload';
 
-    if (template_source === 'upload' && req.file) {
-      // Only delete old file if it was a custom upload (starts with uploads/templates/)
-      // and it's not a template library file
-      if (existing[0].template_sertifikat && existing[0].template_sertifikat.includes('template-')) {
-        const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
+    // Helper function to safely delete old uploaded template file
+    // ONLY deletes if the old template was an upload (not from library)
+    const safeDeleteOldUpload = async () => {
+      // Only delete if the existing template was an upload (not from library)
+      // Check template_source column - if it's 'template', the file is shared and should NOT be deleted
+      if (existing[0].template_source === 'upload' && existing[0].template_sertifikat) {
+        // Also verify it's not referenced by certificate_templates table (double safety check)
+        const [libraryCheck] = await pool.query(
+          'SELECT id FROM certificate_templates WHERE image_path = ?',
+          [existing[0].template_sertifikat]
+        );
+        if (libraryCheck.length === 0) {
+          const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
+          if (fs.existsSync(oldPath)) {
+            fs.unlinkSync(oldPath);
+          }
         }
       }
+    };
+
+    if (template_source === 'upload' && req.file) {
+      await safeDeleteOldUpload();
       template_path = 'uploads/templates/' + req.file.filename;
+      final_template_id = null;
+      final_template_source = 'upload';
     } else if (template_source === 'template' && template_id) {
       // Verify template exists
       const [templateCheck] = await pool.query(
@@ -237,27 +254,23 @@ export const updateEvent = async (req, res) => {
           message: 'Selected template not found or inactive'
         });
       }
-      // Only delete old file if it was a custom upload (contains 'template-' which is the prefix for uploaded files)
-      if (existing[0].template_sertifikat && existing[0].template_sertifikat.includes('template-')) {
-        const oldPath = path.join(__dirname, '..', existing[0].template_sertifikat);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
-      }
+      await safeDeleteOldUpload();
       template_path = templateCheck[0].image_path;
+      final_template_id = template_id;
+      final_template_source = 'template';
     }
 
-    // Update event
+    // Update event with proper template tracking
     await pool.query(
       `UPDATE events SET 
        nama_kegiatan = ?, nomor_surat = ?, tanggal_mulai = ?, tanggal_selesai = ?,
        jam_mulai = ?, jam_selesai = ?, batas_waktu_absensi = ?, template_sertifikat = ?,
-       form_config = ?, status = ?
+       template_id = ?, template_source = ?, form_config = ?, status = ?
        WHERE id = ?`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
-        JSON.stringify(form_config || {}), status || existing[0].status, id
+        final_template_id, final_template_source, JSON.stringify(form_config || {}), status || existing[0].status, id
       ]
     );
 
@@ -280,8 +293,11 @@ export const deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if event exists
-    const [existing] = await pool.query('SELECT template_sertifikat FROM events WHERE id = ?', [id]);
+    // Check if event exists - include template_source to determine if we should delete the file
+    const [existing] = await pool.query(
+      'SELECT template_sertifikat, template_source, template_id FROM events WHERE id = ?', 
+      [id]
+    );
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
@@ -289,11 +305,21 @@ export const deleteEvent = async (req, res) => {
       });
     }
 
-    // Delete template file if exists
-    if (existing[0].template_sertifikat) {
-      const templatePath = path.join(__dirname, '..', existing[0].template_sertifikat);
-      if (fs.existsSync(templatePath)) {
-        fs.unlinkSync(templatePath);
+    // Only delete template file if it was an upload (not from library)
+    // Library templates (template_source = 'template') are shared and should NOT be deleted
+    if (existing[0].template_sertifikat && existing[0].template_source === 'upload') {
+      // Double check: verify the file is not used by certificate_templates table
+      const [libraryCheck] = await pool.query(
+        'SELECT id FROM certificate_templates WHERE image_path = ?',
+        [existing[0].template_sertifikat]
+      );
+      
+      // Only delete if not in library
+      if (libraryCheck.length === 0) {
+        const templatePath = path.join(__dirname, '..', existing[0].template_sertifikat);
+        if (fs.existsSync(templatePath)) {
+          fs.unlinkSync(templatePath);
+        }
       }
     }
 
