@@ -16,7 +16,7 @@ export const generateSingleCertificate = async (req, res) => {
     // Get attendance and event data
     const [attendances] = await pool.query(
       `SELECT a.*, e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai, 
-              e.template_sertifikat, e.nomor_surat
+              e.template_sertifikat, e.nomor_surat, e.certificate_layout
        FROM attendances a
        JOIN events e ON a.event_id = e.id
        WHERE a.id = ?`,
@@ -32,13 +32,26 @@ export const generateSingleCertificate = async (req, res) => {
 
     const attendance = attendances[0];
 
+    // Parse certificate_layout if it's a JSON string
+    let certificateLayout = null;
+    try {
+      if (attendance.certificate_layout) {
+        certificateLayout = typeof attendance.certificate_layout === 'string' 
+          ? JSON.parse(attendance.certificate_layout) 
+          : attendance.certificate_layout;
+      }
+    } catch (err) {
+      console.warn('Failed to parse certificate_layout:', err);
+    }
+
     // Generate PDF certificate
     const result = await generateCertificate(
       attendance,
       {
         nama_kegiatan: attendance.nama_kegiatan,
         tanggal_mulai: attendance.tanggal_mulai,
-        tanggal_selesai: attendance.tanggal_selesai
+        tanggal_selesai: attendance.tanggal_selesai,
+        certificate_layout: certificateLayout
       },
       attendance.template_sertifikat
     );
@@ -91,6 +104,18 @@ export const generateEventCertificates = async (req, res) => {
 
     const event = events[0];
 
+    // Parse certificate_layout if it's a JSON string
+    let certificateLayout = null;
+    try {
+      if (event.certificate_layout) {
+        certificateLayout = typeof event.certificate_layout === 'string' 
+          ? JSON.parse(event.certificate_layout) 
+          : event.certificate_layout;
+      }
+    } catch (err) {
+      console.warn('Failed to parse certificate_layout:', err);
+    }
+
     // Get all attendances for the event
     const [attendances] = await pool.query(
       'SELECT * FROM attendances WHERE event_id = ? ORDER BY urutan_absensi ASC',
@@ -115,7 +140,8 @@ export const generateEventCertificates = async (req, res) => {
           {
             nama_kegiatan: event.nama_kegiatan,
             tanggal_mulai: event.tanggal_mulai,
-            tanggal_selesai: event.tanggal_selesai
+            tanggal_selesai: event.tanggal_selesai,
+            certificate_layout: certificateLayout
           },
           event.template_sertifikat
         );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { eventsAPI, templatesAPI } from "../services/api";
+import CertificateEditor from "./CertificateEditor";
 
 const formatDate = (value) => {
   if (!value) return "";
@@ -41,6 +42,9 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     templateFile: null,
     templatePreview: null,
     templateName: null,
+
+    // Certificate Layout
+    certificateLayout: null,
 
     // Form Config (stored as JSON in database)
     requireName: true,
@@ -148,6 +152,16 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       parsedConfig = editEvent.form_config || {};
     }
 
+    // Parse certificate_layout if exists
+    let parsedLayout = null;
+    try {
+      if (editEvent.certificate_layout) {
+        parsedLayout = typeof editEvent.certificate_layout === "string" ? JSON.parse(editEvent.certificate_layout) : editEvent.certificate_layout;
+      }
+    } catch (err) {
+      console.warn("Failed to parse editEvent.certificate_layout", err);
+    }
+
     setFormData((prev) => ({
       ...prev,
       nomor_surat: editEvent.nomor_surat || prev.nomor_surat,
@@ -162,6 +176,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       templateFile: null,
       templatePreview: templatePreviewUrl,
       templateName: editEvent.template_sertifikat ? editEvent.template_sertifikat.split("/").pop() : prev.templateName,
+      certificateLayout: parsedLayout,
 
       // merge config
       requireName: parsedConfig.requireName ?? prev.requireName,
@@ -225,6 +240,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
         template_source: formData.templateSource,
         template_id: formData.templateId,
         template: formData.templateFile,
+        certificate_layout: formData.certificateLayout,
       };
 
       let response;
@@ -297,7 +313,13 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
           className={`flex-1 py-2 text-center border-b-4 cursor-pointer ${activeStep === 2 ? "border-blue-600 text-blue-700 font-bold" : "border-gray-200 text-gray-500"}`}
           onClick={() => setActiveStep(2)}
         >
-          2. Atur Isian Absensi
+          2. Atur Absensi
+        </div>
+        <div
+          className={`flex-1 py-2 text-center border-b-4 cursor-pointer ${activeStep === 3 ? "border-blue-600 text-blue-700 font-bold" : "border-gray-200 text-gray-500"}`}
+          onClick={() => setActiveStep(3)}
+        >
+          3. Layout Sertifikat
         </div>
       </div>
 
@@ -684,6 +706,43 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
 
             <div className="flex justify-between pt-6 border-t mt-6">
               <button type="button" onClick={() => setActiveStep(1)} className="text-gray-600 px-6 py-2 rounded-md hover:bg-gray-100 transition font-medium">
+                ← Kembali
+              </button>
+              <button type="button" onClick={() => setActiveStep(3)} className="bg-blue-700 text-white px-6 py-2 rounded-md hover:bg-blue-800 transition font-medium">
+                Lanjut: Layout Sertifikat →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Certificate Layout Editor */}
+        {activeStep === 3 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            {formData.templatePreview ? (
+              <CertificateEditor
+                templatePreview={formData.templatePreview}
+                initialLayout={formData.certificateLayout}
+                formConfig={formData}
+                onLayoutChange={(layout) => {
+                  setFormData((prev) => ({ ...prev, certificateLayout: layout }));
+                }}
+              />
+            ) : (
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded">
+                <div className="flex items-center">
+                  <svg className="w-6 h-6 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <h3 className="font-bold text-yellow-800 mb-1">Template Belum Dipilih</h3>
+                    <p className="text-sm text-yellow-700">Silakan kembali ke Step 1 dan pilih atau upload template sertifikat terlebih dahulu.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between pt-6 border-t mt-6">
+              <button type="button" onClick={() => setActiveStep(2)} className="text-gray-600 px-6 py-2 rounded-md hover:bg-gray-100 transition font-medium">
                 ← Kembali
               </button>
               <button

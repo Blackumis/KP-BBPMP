@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import QRCode from "qrcode";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,14 +13,29 @@ if (!fs.existsSync(certificatesDir)) {
   fs.mkdirSync(certificatesDir, { recursive: true });
 }
 
+// Helper function to get PDFKit font name from font family setting
+const getFontName = (fontFamily, fontWeight) => {
+  // Map custom font families to PDFKit built-in fonts
+  const fontMap = {
+    "Times-Roman": fontWeight === "bold" ? "Times-Bold" : "Times-Roman",
+    "Helvetica": fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica",
+    "Courier": fontWeight === "bold" ? "Courier-Bold" : "Courier",
+    "Times-Bold": "Times-Bold",
+    "Helvetica-Bold": "Helvetica-Bold",
+    "Courier-Bold": "Courier-Bold",
+  };
+  
+  return fontMap[fontFamily] || (fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica");
+};
+
 export const generateCertificate = async (attendanceData, eventData, templatePath = null) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
       // Create PDF document
       const doc = new PDFDocument({
         size: "A4",
         layout: "landscape",
-        margin: 50,
+        margin: 0,
       });
 
       // Generate filename
@@ -30,73 +46,195 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
       const writeStream = fs.createWriteStream(filepath);
       doc.pipe(writeStream);
 
+      const pageWidth = doc.page.width; // 842 for A4 landscape
+      const pageHeight = doc.page.height; // 595 for A4 landscape
+
       // If template exists, use it as background
       if (templatePath && fs.existsSync(path.join(__dirname, "..", templatePath))) {
         try {
           doc.image(path.join(__dirname, "..", templatePath), 0, 0, {
-            width: doc.page.width,
-            height: doc.page.height,
+            width: pageWidth,
+            height: pageHeight,
           });
         } catch (err) {
           console.error("Error loading template:", err);
         }
       }
 
-      // Add certificate content
-      // Title
-      doc.fontSize(28).font("Helvetica-Bold").text("SERTIFIKAT", 0, 150, { align: "center" });
+      // Check if custom layout exists
+      const hasCustomLayout = eventData.certificate_layout && Array.isArray(eventData.certificate_layout) && eventData.certificate_layout.length > 0;
 
-      doc.fontSize(14).font("Helvetica").text("Diberikan kepada:", 0, 200, { align: "center" });
+      if (hasCustomLayout) {
+        // Use custom layout from certificate editor
+        const layout = eventData.certificate_layout;
+        
+        // Helper function to get dynamic field value
+        const getDynamicValue = (fieldName) => {
+          switch (fieldName) {
+            case "nama_lengkap":
+              return attendanceData.nama_lengkap || "";
+            case "unit_kerja":
+              return attendanceData.unit_kerja || "";
+            case "kabupaten_kota":
+              return attendanceData.kabupaten_kota || "";
+            case "nip":
+              return attendanceData.nip ? `NIP: ${attendanceData.nip}` : "";
+            case "pangkat_golongan":
+              return attendanceData.pangkat_golongan ? `Pangkat/Gol: ${attendanceData.pangkat_golongan}` : "";
+            case "jabatan":
+              return attendanceData.jabatan ? `Jabatan: ${attendanceData.jabatan}` : "";
+            case "nama_kegiatan":
+              return eventData.nama_kegiatan || "";
+            case "tanggal":
+              const startDate = new Date(eventData.tanggal_mulai).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              });
+              const endDate = new Date(eventData.tanggal_selesai).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              });
+              return `${startDate} - ${endDate}`;
+            case "nomor_sertifikat":
+              return `Nomor Sertifikat: ${attendanceData.nomor_sertifikat}`;
+            case "validation_url":
+              return `${process.env.FRONTEND_URL || 'http://localhost:5173'}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
+            case "signature_authority":
+              return `TTD_ATASAN_${attendanceData.nomor_sertifikat}`;
+            default:
+              return "";
+          }
+        };
 
-      // Participant name
-      doc.fontSize(24).font("Helvetica-Bold").text(attendanceData.nama_lengkap, 0, 230, { align: "center" });
+        // Render each field based on layout
+        for (const field of layout) {
+          // Convert percentage positions to absolute positions
+          const xPos = (field.x / 100) * pageWidth;
+          const yPos = (field.y / 100) * pageHeight;
+          const fieldWidth = (field.width / 100) * pageWidth;
+          const fieldHeight = (field.height / 100) * pageHeight;
 
-      // Event details
-      doc.fontSize(12).font("Helvetica").text(`${attendanceData.unit_kerja}`, 0, 270, { align: "center" }).text(`${attendanceData.kabupaten_kota}`, 0, 290, { align: "center" });
+          if (field.type === "qr") {
+            // Generate QR Code
+            try {
+              const qrData = getDynamicValue(field.field);
+              if (qrData) {
+                // Generate QR code as buffer
+                const qrBuffer = await QRCode.toBuffer(qrData, {
+                  errorCorrectionLevel: 'H',
+                  type: 'png',
+                  width: 200,
+                  margin: 1
+                });
+                
+                // Calculate position based on textAlign
+                let qrX = xPos;
+                if (field.textAlign === "center") {
+                  qrX = xPos - fieldWidth / 2;
+                }
+                
+                // Add QR image to PDF
+                doc.image(qrBuffer, qrX, yPos, {
+                  width: fieldWidth,
+                  height: fieldHeight,
+                  fit: [fieldWidth, fieldHeight],
+                });
+              }
+            } catch (err) {
+              console.error("Error generating QR code:", err);
+            }
+          } else {
+            // Text field (static or dynamic)
+            const fontName = getFontName(field.fontFamily || "Times-Roman", field.fontWeight || "normal");
+            doc.font(fontName).fontSize(field.fontSize).fillColor('black');
+            
+            // Get text content
+            const text = field.type === "text" ? field.content : getDynamicValue(field.field);
+            
+            if (text) {
+              // Calculate position and width based on alignment
+              let textX = xPos;
+              let textWidth = fieldWidth;
+              let textAlign = field.textAlign || "left";
+              
+              // Set text options
+              const textOptions = {
+                width: textWidth,
+                align: textAlign,
+                lineBreak: field.wordWrap !== false,
+              };
 
-      doc.fontSize(14).text("Telah mengikuti kegiatan:", 0, 330, { align: "center" });
+              // Adjust X position for center alignment
+              if (textAlign === "center") {
+                textX = xPos - fieldWidth / 2;
+              } else if (textAlign === "right") {
+                textX = xPos - fieldWidth;
+              }
+              
+              // Render text
+              doc.text(text, textX, yPos, textOptions);
+            }
+          }
+        }
+      } else {
+        // Use default layout (legacy)
+        // Title
+        doc.fontSize(28).font("Helvetica-Bold").text("SERTIFIKAT", 0, 150, { align: "center" });
 
-      doc.fontSize(18).font("Helvetica-Bold").text(eventData.nama_kegiatan, 0, 360, { align: "center" });
+        doc.fontSize(14).font("Helvetica").text("Diberikan kepada:", 0, 200, { align: "center" });
 
-      // Date
-      const startDate = new Date(eventData.tanggal_mulai).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-      const endDate = new Date(eventData.tanggal_selesai).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
+        // Participant name
+        doc.fontSize(24).font("Helvetica-Bold").text(attendanceData.nama_lengkap, 0, 230, { align: "center" });
 
-      doc.fontSize(12).font("Helvetica").text(`${startDate} - ${endDate}`, 0, 400, { align: "center" });
+        // Event details
+        doc.fontSize(12).font("Helvetica").text(`${attendanceData.unit_kerja}`, 0, 270, { align: "center" }).text(`${attendanceData.kabupaten_kota}`, 0, 290, { align: "center" });
 
-      // Certificate number
-      doc.fontSize(10).text(`Nomor Sertifikat: ${attendanceData.nomor_sertifikat}`, 0, 450, { align: "center" });
+        doc.fontSize(14).text("Telah mengikuti kegiatan:", 0, 330, { align: "center" });
 
-      // Validation link - pointing to frontend
-      const validationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
-      doc.fontSize(9)
-         .fillColor('blue')
-         .text('Validasi Sertifikat:', 0, 470, { align: 'center', continued: false })
-         .fillColor('blue')
-         .text(validationUrl, 0, 485, { 
-           align: 'center',
-           link: validationUrl,
-           underline: true
-         })
-         .fillColor('black');
+        doc.fontSize(18).font("Helvetica-Bold").text(eventData.nama_kegiatan, 0, 360, { align: "center" });
 
-      // Additional info at bottom
-      doc.fontSize(9).text(`NIP: ${attendanceData.nip || "-"}`, 100, 520, { align: "left" });
+        // Date
+        const startDate = new Date(eventData.tanggal_mulai).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        const endDate = new Date(eventData.tanggal_selesai).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
 
-      if (attendanceData.pangkat_golongan) {
-        doc.text(`Pangkat/Golongan: ${attendanceData.pangkat_golongan}`, 100, 535);
-      }
+        doc.fontSize(12).font("Helvetica").text(`${startDate} - ${endDate}`, 0, 400, { align: "center" });
 
-      if (attendanceData.jabatan) {
-        doc.text(`Jabatan: ${attendanceData.jabatan}`, 100, 550);
+        // Certificate number
+        doc.fontSize(10).text(`Nomor Sertifikat: ${attendanceData.nomor_sertifikat}`, 0, 450, { align: "center" });
+
+        // Validation link - pointing to frontend
+        const validationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
+        doc.fontSize(9)
+           .fillColor('blue')
+           .text('Validasi Sertifikat:', 0, 470, { align: 'center', continued: false })
+           .fillColor('blue')
+           .text(validationUrl, 0, 485, { 
+             align: 'center',
+             link: validationUrl,
+             underline: true
+           })
+           .fillColor('black');
+
+        // Additional info at bottom
+        doc.fontSize(9).text(`NIP: ${attendanceData.nip || "-"}`, 100, 520, { align: "left" });
+
+        if (attendanceData.pangkat_golongan) {
+          doc.text(`Pangkat/Golongan: ${attendanceData.pangkat_golongan}`, 100, 535);
+        }
+
+        if (attendanceData.jabatan) {
+          doc.text(`Jabatan: ${attendanceData.jabatan}`, 100, 550);
+        }
       }
 
       // Finalize PDF

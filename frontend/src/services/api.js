@@ -76,6 +76,9 @@ export const eventsAPI = {
     formData.append("batas_waktu_absensi", eventData.batas_waktu_absensi);
     formData.append("form_config", JSON.stringify(eventData.form_config || {}));
     formData.append("template_source", eventData.template_source || "upload");
+    if (eventData.certificate_layout) {
+      formData.append("certificate_layout", JSON.stringify(eventData.certificate_layout));
+    }
     if (eventData.template_source === "template" && eventData.template_id) {
       formData.append("template_id", eventData.template_id);
     } else if (eventData.template instanceof File) {
@@ -87,6 +90,7 @@ export const eventsAPI = {
     const formData = new FormData();
     Object.keys(eventData).forEach((key) => {
       if (key === "form_config") formData.append(key, JSON.stringify(eventData[key]));
+      else if (key === "certificate_layout") formData.append(key, JSON.stringify(eventData[key]));
       else if (key === "template" && eventData[key] instanceof File) formData.append("template", eventData[key]);
       else if (eventData[key] !== null && eventData[key] !== undefined) formData.append(key, eventData[key]);
     });
