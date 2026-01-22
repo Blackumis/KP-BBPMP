@@ -428,7 +428,6 @@ const AttendanceList = ({ event, onBack }) => {
             {eventLoading.sendAll && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
             Kirim Semua Sertifikat
           </button>
-
           <button
             onClick={handleGenerateAttendanceReport}
             disabled={eventLoading.generateReport || isLoading || attendances.length === 0}

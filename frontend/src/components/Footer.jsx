@@ -5,7 +5,6 @@ const Footer = () => {
     <footer className="bg-[#1e3a8a] text-white py-6 mt-auto">
       <div className="max-w-7xl mx-auto px-6 text-center text-sm">
         <p>&copy; {new Date().getFullYear()} BBPMP Provinsi Jawa Tengah - Kementerian Pendidikan Dasar dan Menengah.</p>
-        <p className="text-blue-200 mt-1">Hak Cipta Dilindungi Undang-Undang.</p>
       </div>
     </footer>
   );

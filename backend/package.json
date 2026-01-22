@@ -9,6 +9,7 @@
     "dev": "nodemon server.js",
     "migrate": "node migrations/runMigrations.js",
     "migrate:templates": "node migrations/addTemplates.js",
+    "migrate:fix-template-source": "node migrations/fixTemplateSource.js",
     "create-admin": "node scripts/createAdmin.js"
   },
   "keywords": [
