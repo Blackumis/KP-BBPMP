@@ -6,7 +6,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Create event
 export const createEvent = async (req, res) => {
   try {
     const {
@@ -19,6 +18,17 @@ export const createEvent = async (req, res) => {
       batas_waktu_absensi,
       form_config
     } = req.body;
+    
+    // Parse certificate_layout - it comes as JSON string from FormData
+    let certificate_layout = req.body.certificate_layout;
+    if (certificate_layout && typeof certificate_layout === 'string') {
+      try {
+        certificate_layout = JSON.parse(certificate_layout);
+      } catch (err) {
+        console.warn('Failed to parse certificate_layout:', err);
+        certificate_layout = null;
+      }
+    }
 
     // Validation
     if (!nama_kegiatan || !nomor_surat || !tanggal_mulai || !tanggal_selesai || 
@@ -65,15 +75,16 @@ export const createEvent = async (req, res) => {
       template_path = templateCheck[0].image_path;
     }
 
-    // Insert event with template_id and template_source to properly track library templates
+    // Insert event with template_id, template_source, and certificate_layout
     const [result] = await pool.query(
       `INSERT INTO events 
        (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
-        batas_waktu_absensi, template_sertifikat, template_id, template_source, form_config, created_by, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+        batas_waktu_absensi, template_sertifikat, certificate_layout, template_id, template_source, form_config, created_by, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
+        certificate_layout ? JSON.stringify(certificate_layout) : null,
         final_template_id, template_source, JSON.stringify(form_config || {}), req.user.id
       ]
     );
@@ -201,6 +212,17 @@ export const updateEvent = async (req, res) => {
       form_config,
       status
     } = req.body;
+    
+    // Parse certificate_layout - it comes as JSON string from FormData
+    let certificate_layout = req.body.certificate_layout;
+    if (certificate_layout && typeof certificate_layout === 'string') {
+      try {
+        certificate_layout = JSON.parse(certificate_layout);
+      } catch (err) {
+        console.warn('Failed to parse certificate_layout:', err);
+        certificate_layout = null;
+      }
+    }
 
     // Check if event exists
     const [existing] = await pool.query('SELECT * FROM events WHERE id = ?', [id]);
@@ -260,16 +282,17 @@ export const updateEvent = async (req, res) => {
       final_template_source = 'template';
     }
 
-    // Update event with proper template tracking
+    // Update event with proper template tracking and certificate_layout
     await pool.query(
       `UPDATE events SET 
        nama_kegiatan = ?, nomor_surat = ?, tanggal_mulai = ?, tanggal_selesai = ?,
        jam_mulai = ?, jam_selesai = ?, batas_waktu_absensi = ?, template_sertifikat = ?,
-       template_id = ?, template_source = ?, form_config = ?, status = ?
+       certificate_layout = ?, template_id = ?, template_source = ?, form_config = ?, status = ?
        WHERE id = ?`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
+        certificate_layout ? JSON.stringify(certificate_layout) : null,
         final_template_id, final_template_source, JSON.stringify(form_config || {}), status || existing[0].status, id
       ]
     );
