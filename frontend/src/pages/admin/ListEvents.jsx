@@ -5,11 +5,13 @@ import { eventsAPI } from "../../services/api";
 const ListEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await eventsAPI.getAll();
+        const res = await eventsAPI.getAll({ limit: 1000 });
         if (res.success) setEvents(res.data.events || []);
       } catch (err) {
         console.error(err);
@@ -22,7 +24,7 @@ const ListEvents = () => {
   const handleRefresh = async () => {
     setLoading(true);
     try {
-      const res = await eventsAPI.getAll();
+      const res = await eventsAPI.getAll({ limit: 1000 });
       if (res.success) setEvents(res.data.events || []);
     } catch (err) {
       console.error(err);
@@ -142,9 +144,9 @@ const ListEvents = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {events.map((event, index) => (
+              {events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((event, index) => (
                 <tr key={event.id} className="hover:bg-gray-50 transition duration-150">
-                  <td className="py-4 px-4 text-sm text-gray-500">{index + 1}</td>
+                  <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                   <td className="py-4 px-4 text-sm font-medium text-gray-900">{event.nama_kegiatan}</td>
                   <td className="py-4 px-4 text-sm text-gray-500">{event.nomor_surat || "-"}</td>
                   <td className="py-4 px-4 text-sm text-gray-500">
@@ -177,13 +179,12 @@ const ListEvents = () => {
                                 prompt("Salin link berikut:", shareUrl);
                               });
                             }}
-                            className="inline-flex items-center px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs font-medium hover:bg-cyan-200"
+                            className="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-full hover:bg-cyan-200"
                             title="Salin Link Absensi"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                             </svg>
-                            Share
                           </button>
                           <a
                             href={`/attendance/${event.id}/${event.nama_kegiatan}`}
@@ -225,6 +226,46 @@ const ListEvents = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {events.length > itemsPerPage && (
+        <div className="flex items-center justify-between mt-6 pt-4 border-t">
+          <div className="text-sm text-gray-500">
+            Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, events.length)} dari {events.length} kegiatan
+          </div>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Sebelumnya"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            {Array.from({ length: Math.ceil(events.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1 text-sm font-medium rounded-md ${currentPage === page ? 'bg-blue-600 text-white' : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'}`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(events.length / itemsPerPage)))}
+              disabled={currentPage === Math.ceil(events.length / itemsPerPage)}
+              className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Selanjutnya"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
     </div>

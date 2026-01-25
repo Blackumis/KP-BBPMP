@@ -5,7 +5,8 @@ import { downloadPDF, showNotification, showConfirmation } from "../utils/certif
 const AttendanceList = ({ event, onBack }) => {
   const [attendances, setAttendances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Loading states for individual attendance actions
   const [loadingStates, setLoadingStates] = useState({});
@@ -20,7 +21,7 @@ const AttendanceList = ({ event, onBack }) => {
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await attendanceAPI.getByEvent(event.id, { page, limit: 50 });
+        const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 1000 });
         if (response.success) {
           setAttendances(response.data.attendances || []);
         }
@@ -32,7 +33,7 @@ const AttendanceList = ({ event, onBack }) => {
       }
     };
     load();
-  }, [event, page]);
+  }, [event]);
 
   // Helper to set loading state for a specific button action
   const setButtonLoading = (attendanceId, action, loading) => {
@@ -474,9 +475,9 @@ const AttendanceList = ({ event, onBack }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {attendances.map((a, i) => (
+              {attendances.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((a, i) => (
                 <tr key={a.id} className="hover:bg-gray-50 transition duration-150">
-                  <td className="py-4 px-4 text-sm text-gray-500">{i + 1}</td>
+                  <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + i + 1}</td>
                   <td className="py-4 px-4 text-sm font-medium text-gray-900">{a.nama_lengkap}</td>
                   <td className="py-4 px-4 text-sm text-gray-500">{a.unit_kerja}</td>
                   <td className="py-4 px-4 text-sm text-gray-500">{a.email}</td>
@@ -536,6 +537,46 @@ const AttendanceList = ({ event, onBack }) => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {attendances.length > itemsPerPage && (
+        <div className="flex items-center justify-between mt-6 pt-4 border-t">
+          <div className="text-sm text-gray-500">
+            Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, attendances.length)} dari {attendances.length} peserta
+          </div>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Sebelumnya"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            {Array.from({ length: Math.ceil(attendances.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1 text-sm font-medium rounded-md ${currentPage === page ? 'bg-blue-600 text-white' : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'}`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(attendances.length / itemsPerPage)))}
+              disabled={currentPage === Math.ceil(attendances.length / itemsPerPage)}
+              className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Selanjutnya"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
     </div>

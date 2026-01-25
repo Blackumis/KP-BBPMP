@@ -6,19 +6,15 @@ const Header = ({ user, onLogout, isAuthenticated }) => {
   return (
     <header>
       <nav className="bg-white shadow-md border-b-4 border-yellow-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-8 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* LEFT: Logo & Title */}
             <div className="flex items-center gap-4">
               <img
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png"
-                alt="Kemendikdasmen"
-                className="h-12 w-auto"
+                src="/Logo BBPMP JATENG.png"
+                alt="BBPMP Jawa Tengah"
+                className="h-20 w-auto"
               />
-              <div className="flex flex-col">
-                <h1 className="text-lg font-bold text-blue-800 uppercase leading-tight">Kemendikdasmen</h1>
-                <p className="text-xs font-semibold text-gray-700">BBPMP Provinsi Jawa Tengah</p>
-              </div>
             </div>
 
             {/* RIGHT: User Info (Desktop) */}
