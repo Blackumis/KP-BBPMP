@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { attendanceAPI, referenceAPI } from "../services/api";
+import { showNotification } from "./Notification";
 
 const AttendanceForm = ({ eventId, onReset }) => {
   const [config, setConfig] = useState(null);
@@ -195,6 +196,7 @@ const AttendanceForm = ({ eventId, onReset }) => {
           }
         }
       } catch (err) {
+        showNotification(err.message || "Gagal memuat form kegiatan", "error");
         setFormError(err.message);
       } finally {
         setIsLoadingForm(false);
@@ -234,7 +236,7 @@ const AttendanceForm = ({ eventId, onReset }) => {
       setAccessGranted(true);
       setPasswordError("");
     } else {
-      setPasswordError("Password salah. Silakan coba lagi.");
+      showNotification("Password salah. Silakan coba lagi.", "error");
     }
   };
 
@@ -251,22 +253,21 @@ const AttendanceForm = ({ eventId, onReset }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setFormError(null);
 
     if (config.requireEmail !== false && formData.email !== formData.email_konfirmasi) {
-      setFormError("Email dan konfirmasi email tidak sama.");
+      showNotification("Email dan konfirmasi email tidak sama.", "error");
       setIsSubmitting(false);
       return;
     }
 
     if (config.requirePernyataan !== false && !formData.pernyataan) {
-      setFormError("Anda harus menyetujui pernyataan untuk melanjutkan.");
+      showNotification("Anda harus menyetujui pernyataan untuk melanjutkan.", "warning");
       setIsSubmitting(false);
       return;
     }
 
     if (config.requireSignature !== false && !hasSignature) {
-      setFormError("Silakan unggah atau gambar tanda tangan.");
+      showNotification("Silakan unggah atau gambar tanda tangan.", "warning");
       setIsSubmitting(false);
       return;
     }
@@ -308,7 +309,7 @@ const AttendanceForm = ({ eventId, onReset }) => {
         setSubmitResult(response.data);
       }
     } catch (err) {
-      setFormError(err.message);
+      showNotification(err.message || "Gagal mengirim absensi. Silakan coba lagi.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -373,7 +374,6 @@ const AttendanceForm = ({ eventId, onReset }) => {
                 autoFocus
               />
             </div>
-            {passwordError && <p className="text-red-600 text-sm font-medium">{passwordError}</p>}
             <button type="submit" className="w-full bg-blue-700 text-white font-bold py-2 px-4 rounded hover:bg-blue-800 transition">
               Buka Absensi
             </button>
@@ -457,8 +457,6 @@ const AttendanceForm = ({ eventId, onReset }) => {
           </div>
 
           <div className="p-5 md:p-8">
-            {formError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">{formError}</div>}
-
             <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
               {/* Input Fields - Menggunakan stack mobile, grid di desktop */}
               <div className="grid grid-cols-1 gap-5">

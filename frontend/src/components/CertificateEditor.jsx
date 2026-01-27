@@ -325,7 +325,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
     if (!primaryField) return;
 
     if (isDragging) {
-      // Calculate delta movement
+      // Calculate delta movement without rounding for smooth drag
       const deltaX = ((e.clientX - dragOffset.x) / rect.width) * 100;
       const deltaY = ((e.clientY - dragOffset.y) / rect.height) * 100;
 
@@ -335,6 +335,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
             const newX = initialPositions[f.id].x + deltaX;
             const newY = initialPositions[f.id].y + deltaY;
             
+            // Constrain without rounding for free positioning
             const constrainedX = Math.max(0, Math.min(100, newX));
             const constrainedY = Math.max(0, Math.min(100, newY));
             
@@ -356,19 +357,55 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
             let newX = f.x;
             let newY = f.y;
 
-            if (resizeHandle.includes("e")) {
-              newWidth = Math.max(5, f.width + deltaX);
-            }
-            if (resizeHandle.includes("s")) {
-              newHeight = Math.max(3, f.height + deltaY);
-            }
-            if (resizeHandle.includes("w")) {
-              newWidth = Math.max(5, f.width - deltaX);
-              newX = f.x + deltaX;
-            }
-            if (resizeHandle.includes("n")) {
-              newHeight = Math.max(3, f.height - deltaY);
-              newY = f.y + deltaY;
+            // For QR fields, maintain square aspect ratio
+            const isQRField = f.type === "qr";
+
+            if (isQRField) {
+              // For QR, use the larger absolute delta to maintain square
+              const absDeltaX = Math.abs(deltaX);
+              const absDeltaY = Math.abs(deltaY);
+              const maxDelta = Math.max(absDeltaX, absDeltaY);
+              
+              // Determine if we're expanding or contracting based on handle
+              let sizeDelta = 0;
+              
+              // East and South handles: positive movement = expand
+              if (resizeHandle === "e" || resizeHandle === "se" || resizeHandle === "s") {
+                sizeDelta = (deltaX > 0 || deltaY > 0) ? maxDelta : -maxDelta;
+              }
+              // West and North handles: positive movement = contract (opposite)
+              else if (resizeHandle === "w" || resizeHandle === "nw" || resizeHandle === "n") {
+                sizeDelta = (deltaX < 0 || deltaY < 0) ? maxDelta : -maxDelta;
+              }
+              // Northeast: right-up expands
+              else if (resizeHandle === "ne") {
+                sizeDelta = (deltaX > 0 || deltaY < 0) ? maxDelta : -maxDelta;
+              }
+              // Southwest: left-down expands
+              else if (resizeHandle === "sw") {
+                sizeDelta = (deltaX < 0 || deltaY > 0) ? maxDelta : -maxDelta;
+              }
+
+              // Apply size change while keeping position fixed
+              newWidth = Math.max(5, f.width + sizeDelta);
+              newHeight = newWidth; // Keep square
+              // x and y remain unchanged
+            } else {
+              // Normal resize for non-QR fields
+              if (resizeHandle.includes("e")) {
+                newWidth = Math.max(5, f.width + deltaX);
+              }
+              if (resizeHandle.includes("s")) {
+                newHeight = Math.max(3, f.height + deltaY);
+              }
+              if (resizeHandle.includes("w")) {
+                newWidth = Math.max(5, f.width - deltaX);
+                newX = f.x + deltaX;
+              }
+              if (resizeHandle.includes("n")) {
+                newHeight = Math.max(3, f.height - deltaY);
+                newY = f.y + deltaY;
+              }
             }
 
             return { ...f, width: newWidth, height: newHeight, x: newX, y: newY };
@@ -527,28 +564,30 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                   <div
                     key={field.id}
                     onMouseDown={(e) => handleMouseDown(e, field)}
-                    className={`absolute border-2 transition-all ${
+                    className={`absolute border-2 ${
                       isSelected
                         ? "border-blue-500 bg-blue-100/30 z-20"
                         : "border-transparent hover:border-blue-300 hover:bg-blue-50/20 z-10"
                     } ${isQR ? "flex items-center justify-center bg-gray-200" : ""}`}
                     style={{
-                      left: field.textAlign === "center" ? `${field.x}%` : `${field.x}%`,
+                      left: `${field.x}%`,
                       top: `${field.y}%`,
                       width: `${field.width}%`,
                       height: `${field.height}%`,
-                      transform: field.textAlign === "center" ? "translateX(-50%)" : "none",
+                      transform: field.textAlign === "center" ? "translateX(-50%)" : field.textAlign === "right" ? "translateX(-100%)" : "none",
+                      transition: "none",
                       cursor: isDragging ? "grabbing" : "grab",
                     }}
                   >
                     {!isQR && (
                       <div
-                        className="w-full h-full flex items-center justify-center px-2"
+                        className="w-full h-full flex items-center px-2"
                         style={{
                           fontSize: `${field.fontSize * 0.6}px`,
                           fontWeight: field.fontWeight,
                           fontFamily: getFontFamilyStyle(field.fontFamily || "Times-Roman"),
-                          textAlign: field.textAlign,
+                          textAlign: field.textAlign || "left",
+                          justifyContent: field.textAlign === "center" ? "center" : field.textAlign === "right" ? "flex-end" : "flex-start",
                           wordWrap: field.wordWrap ? "break-word" : "normal",
                           whiteSpace: field.wordWrap ? "normal" : "nowrap",
                           overflow: "hidden",

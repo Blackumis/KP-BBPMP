@@ -15,6 +15,7 @@ import attendanceRoutes from "./routes/attendanceRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
 import referenceRoutes from "./routes/referenceRoutes.js";
 import templateRoutes from "./routes/templateRoutes.js";
+import officialRoutes from "./routes/officialRoutes.js";
 
 dotenv.config();
 
@@ -59,6 +60,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/reference", referenceRoutes);
 app.use("/api/templates", templateRoutes);
+app.use("/api/officials", officialRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

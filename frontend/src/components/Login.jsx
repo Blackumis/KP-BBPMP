@@ -1,15 +1,14 @@
 import React, { useState } from "react";
 import { authAPI } from "../services/api";
+import { showNotification } from "./Notification";
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     setIsLoading(true);
 
     try {
@@ -18,7 +17,7 @@ const Login = ({ onLogin }) => {
         onLogin(response.data.admin);
       }
     } catch (err) {
-      setError(err.message || "Login gagal. Periksa username dan password.");
+      showNotification(err.message || "Login gagal. Periksa username dan password.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -28,8 +27,6 @@ const Login = ({ onLogin }) => {
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md border border-gray-200">
         <h2 className="text-2xl font-bold text-center text-blue-800 mb-6">Login Admin</h2>
-
-        {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

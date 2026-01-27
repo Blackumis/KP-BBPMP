@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { eventsAPI } from "../../services/api";
+import OfficialsManagement from "../../components/OfficialsManagement";
 
 const ListEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState("events");
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -42,13 +44,13 @@ const ListEvents = () => {
       const res = await eventsAPI.delete(eventId);
       if (res.success) {
         setEvents(events.filter((e) => e.id !== eventId));
-        alert("Kegiatan berhasil dihapus");
+        showNotification("Kegiatan berhasil dihapus", "success");
       } else {
-        alert("Gagal menghapus kegiatan");
+        showNotification("Gagal menghapus kegiatan", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat menghapus kegiatan");
+      showNotification("Terjadi kesalahan saat menghapus kegiatan", "error");
     }
   };
 
@@ -61,10 +63,10 @@ const ListEvents = () => {
       await eventsAPI.activate(eventId);
       setEvents(events.map((e) => (e.id === eventId ? { ...e, status: "active" } : e)));
 
-      alert("Kegiatan berhasil diaktifkan");
+      showNotification("Kegiatan berhasil diaktifkan", "success");
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat mengaktifkan kegiatan");
+      showNotification("Terjadi kesalahan saat mengaktifkan kegiatan", "error");
     }
   };
 
@@ -90,29 +92,58 @@ const ListEvents = () => {
 
   return (
     <div className="max-w-6xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
-      <div className="flex justify-between items-center mb-6 border-b pb-4">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-          <span className="bg-blue-100 text-blue-700 py-1 px-3 rounded text-sm mr-3">Admin</span>
+      {/* Tab Navigation */}
+      <div className="flex gap-4 mb-6 border-b">
+        <button
+          onClick={() => setActiveTab("events")}
+          className={`pb-3 px-4 font-semibold transition-all ${
+            activeTab === "events"
+              ? "border-b-2 border-blue-600 text-blue-600"
+              : "text-gray-600 hover:text-blue-600"
+          }`}
+        >
           Daftar Kegiatan
-        </h2>
-        <div className="flex gap-2">
-          <button onClick={handleRefresh} className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded shadow transition duration-200 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
-          <Link to="/admin/create" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Buat Kegiatan Baru
-          </Link>
-        </div>
+        </button>
+        <button
+          onClick={() => setActiveTab("officials")}
+          className={`pb-3 px-4 font-semibold transition-all ${
+            activeTab === "officials"
+              ? "border-b-2 border-blue-600 text-blue-600"
+              : "text-gray-600 hover:text-blue-600"
+          }`}
+        >
+          Pejabat Penandatangan
+        </button>
       </div>
+
+      {/* Tab Content */}
+      {activeTab === "officials" ? (
+        <OfficialsManagement />
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-6 border-b pb-4">
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+              <span className="bg-blue-100 text-blue-700 py-1 px-3 rounded text-sm mr-3">Admin</span>
+              Daftar Kegiatan
+            </h2>
+            <div className="flex gap-2">
+              <button onClick={handleRefresh} className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded shadow transition duration-200 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+              <Link to="/admin/create" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Buat Kegiatan Baru
+              </Link>
+            </div>
+          </div>
 
       {events.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -173,7 +204,7 @@ const ListEvents = () => {
                             onClick={() => {
                               const shareUrl = `${window.location.origin}/attendance/${event.id}/${encodeURIComponent(event.nama_kegiatan)}`;
                               navigator.clipboard.writeText(shareUrl).then(() => {
-                                alert("Link berhasil disalin ke clipboard!");
+                                showNotification("Link berhasil disalin ke clipboard!", "success");
                               }).catch(() => {
                                 // Fallback for older browsers
                                 prompt("Salin link berikut:", shareUrl);
@@ -267,6 +298,8 @@ const ListEvents = () => {
             </button>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

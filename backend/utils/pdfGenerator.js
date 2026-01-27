@@ -119,10 +119,36 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
           if (field.type === "qr") {
             // Generate QR Code
             try {
+              let qrBuffer = null;
+              
+              // Check if this is the signature authority QR and we have an official QR
+              if (field.field === "signature_authority" && eventData.official_qr_path) {
+                // Use the official's QR code image
+                const qrPath = path.join(__dirname, "..", eventData.official_qr_path);
+                if (fs.existsSync(qrPath)) {
+                  // Calculate position based on textAlign
+                  let qrX = xPos;
+                  if (field.textAlign === "center") {
+                    qrX = xPos - fieldWidth / 2;
+                  } else if (field.textAlign === "right") {
+                    qrX = xPos - fieldWidth;
+                  }
+                  
+                  // Add QR image to PDF
+                  doc.image(qrPath, qrX, yPos, {
+                    width: fieldWidth,
+                    height: fieldHeight,
+                    fit: [fieldWidth, fieldHeight],
+                  });
+                  continue; // Skip to next field
+                }
+              }
+              
+              // For other QR codes (validation, etc.), generate dynamically
               const qrData = getDynamicValue(field.field);
               if (qrData) {
                 // Generate QR code as buffer
-                const qrBuffer = await QRCode.toBuffer(qrData, {
+                qrBuffer = await QRCode.toBuffer(qrData, {
                   errorCorrectionLevel: 'H',
                   type: 'png',
                   width: 200,
@@ -133,6 +159,8 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
                 let qrX = xPos;
                 if (field.textAlign === "center") {
                   qrX = xPos - fieldWidth / 2;
+                } else if (field.textAlign === "right") {
+                  qrX = xPos - fieldWidth;
                 }
                 
                 // Add QR image to PDF

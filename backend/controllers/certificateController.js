@@ -13,12 +13,14 @@ export const generateSingleCertificate = async (req, res) => {
   try {
     const { attendance_id } = req.params;
 
-    // Get attendance and event data
+    // Get attendance and event data with official information
     const [attendances] = await pool.query(
       `SELECT a.*, e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai, 
-              e.template_sertifikat, e.nomor_surat, e.certificate_layout
+              e.template_sertifikat, e.nomor_surat, e.certificate_layout, e.official_id,
+              o.signature_qr_path as official_qr_path
        FROM attendances a
        JOIN events e ON a.event_id = e.id
+       LEFT JOIN officials o ON e.official_id = o.id
        WHERE a.id = ?`,
       [attendance_id]
     );
@@ -51,7 +53,8 @@ export const generateSingleCertificate = async (req, res) => {
         nama_kegiatan: attendance.nama_kegiatan,
         tanggal_mulai: attendance.tanggal_mulai,
         tanggal_selesai: attendance.tanggal_selesai,
-        certificate_layout: certificateLayout
+        certificate_layout: certificateLayout,
+        official_qr_path: attendance.official_qr_path
       },
       attendance.template_sertifikat
     );
@@ -89,9 +92,12 @@ export const generateEventCertificates = async (req, res) => {
   try {
     const { event_id } = req.params;
 
-    // Get event details
+    // Get event details with official information
     const [events] = await pool.query(
-      'SELECT * FROM events WHERE id = ?',
+      `SELECT e.*, o.signature_qr_path as official_qr_path
+       FROM events e
+       LEFT JOIN officials o ON e.official_id = o.id
+       WHERE e.id = ?`,
       [event_id]
     );
 
@@ -141,7 +147,8 @@ export const generateEventCertificates = async (req, res) => {
             nama_kegiatan: event.nama_kegiatan,
             tanggal_mulai: event.tanggal_mulai,
             tanggal_selesai: event.tanggal_selesai,
-            certificate_layout: certificateLayout
+            certificate_layout: certificateLayout,
+            official_qr_path: event.official_qr_path
           },
           event.template_sertifikat
         );

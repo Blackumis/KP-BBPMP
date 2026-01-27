@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DaftarKegiatan from "../components/DaftarKegiatan";
 import { eventsAPI } from "../services/api";
+import { showNotification } from "../components/Notification";
 import "../index.css";
 
 const DaftarKegiatanPage = () => {
@@ -37,10 +38,10 @@ const DaftarKegiatanPage = () => {
         onCreateNew={() => navigate("/admin/create")}
         onViewAbsensi={onViewAbsensi}
         onViewAttendances={() => {}}
-        onDelete={() => alert("Harap login untuk menghapus")}
-        onActivate={() => alert("Harap login untuk mengaktifkan")}
+        onDelete={() => showNotification("Harap login untuk menghapus", "warning")}
+        onActivate={() => showNotification("Harap login untuk mengaktifkan", "warning")}
         onRefresh={loadEvents}
-        onEdit={() => alert("Harap login untuk mengedit")}
+        onEdit={() => showNotification("Harap login untuk mengedit", "warning")}
         isAuthenticated={false}
       />
     </div>

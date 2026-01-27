@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { eventsAPI, templatesAPI } from "../services/api";
+import { eventsAPI, templatesAPI, officialsAPI } from "../services/api";
 import CertificateEditor from "./CertificateEditor";
+import { showNotification } from "./Notification";
 
 const formatDate = (value) => {
   if (!value) return "";
@@ -21,6 +22,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [templates, setTemplates] = useState([]);
+  const [officials, setOfficials] = useState([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [newTemplate, setNewTemplate] = useState({ name: "", description: "", image: null, preview: null });
@@ -37,6 +39,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     jam_mulai: "",
     jam_selesai: "",
     batas_waktu_absensi: "",
+    official_id: "",
     templateSource: "upload", // 'upload' or 'template'
     templateId: null,
     templateFile: null,
@@ -65,6 +68,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
   // Load templates on mount
   useEffect(() => {
     loadTemplates();
+    loadOfficials();
   }, []);
 
   // Auto-dismiss notification after 4 seconds
@@ -88,6 +92,17 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       console.warn("Failed to load templates:", err);
     } finally {
       setLoadingTemplates(false);
+    }
+  };
+
+  const loadOfficials = async () => {
+    try {
+      const response = await officialsAPI.getActive();
+      if (response.success) {
+        setOfficials(response.data || []);
+      }
+    } catch (err) {
+      console.warn("Failed to load officials:", err);
     }
   };
 
@@ -171,6 +186,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       batas_waktu_absensi: formatDateTimeLocal(editEvent.batas_waktu_absensi),
       jam_mulai: editEvent.jam_mulai || prev.jam_mulai,
       jam_selesai: editEvent.jam_selesai || prev.jam_selesai,
+      official_id: editEvent.official_id || "",
       templateSource: editEvent.template_source || "upload",
       templateId: editEvent.template_id || null,
       templateFile: null,
@@ -236,6 +252,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
         jam_mulai: formData.jam_mulai,
         jam_selesai: formData.jam_selesai,
         batas_waktu_absensi: formData.batas_waktu_absensi,
+        official_id: formData.official_id || null,
         form_config,
         template_source: formData.templateSource,
         template_id: formData.templateId,
@@ -247,7 +264,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       if (editEvent && editEvent.id) {
         response = await eventsAPI.update(editEvent.id, eventData);
         if (response.success) {
-          alert("Kegiatan berhasil diperbarui!");
+          showNotification("Kegiatan berhasil diperbarui!", "success");
           // Gunakan onBack atau onSaveConfig
           if (onBack) {
             onBack();
@@ -258,7 +275,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       } else {
         response = await eventsAPI.create(eventData);
         if (response.success) {
-          alert("Kegiatan berhasil dibuat!");
+          showNotification("Kegiatan berhasil dibuat!", "success");
           // Gunakan onBack atau onSaveConfig
           if (onBack) {
             onBack();
@@ -268,7 +285,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
         }
       }
     } catch (err) {
-      setError(err.message || "Gagal menyimpan kegiatan");
+      showNotification(err.message || "Gagal menyimpan kegiatan", "error");
     } finally {
       setIsLoading(false);
     }
@@ -291,15 +308,6 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
           </button>
         )}
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-          <button onClick={() => setError(null)} className="ml-2 text-red-600 hover:text-red-800">
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* Progress Stepper */}
       <div className="flex mb-8">
@@ -417,6 +425,28 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   required
                 />
+              </div>
+              
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Pejabat Penandatangan
+                </label>
+                <select
+                  name="official_id"
+                  value={formData.official_id}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                >
+                  <option value="">Pilih Pejabat (Opsional)</option>
+                  {officials.map((official) => (
+                    <option key={official.id} value={official.id}>
+                      {official.name} - {official.position}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Pilih pejabat yang akan menandatangani sertifikat. QR code tanda tangan akan ditambahkan secara otomatis pada sertifikat.
+                </p>
               </div>
             </div>
 
@@ -681,17 +711,18 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
 
             <div className="grid grid-cols-1 gap-4">
               {[
-                { id: "requireName", label: "Nama", mandatory: true },
-                { id: "requireUnit", label: "Unit Kerja", mandatory: true },
-                { id: "requireNIP", label: "NIP", mandatory: false },
+                // Yang wajib (mandatory) di atas
+                { id: "requireName", label: "Nama Lengkap Peserta", mandatory: true },
+                { id: "requireUnit", label: "Unit Kerja / Instansi", mandatory: true },
                 { id: "requireCity", label: "Kabupaten/Kota Unit Kerja", mandatory: true },
                 { id: "requireDob", label: "Tanggal Lahir", mandatory: true },
                 { id: "requirePhone", label: "Nomor Handphone", mandatory: true },
-                { id: "requireRank", label: "Pangkat/Golongan", mandatory: false },
-                { id: "requirePosition", label: "Jabatan", mandatory: false },
                 { id: "requireEmail", label: "E-mail", mandatory: true },
                 { id: "requireSignature", label: "e-Signature atau ttd elektronik peserta", mandatory: true },
-                { id: "requireProvince", label: "Provinsi Unit Kerja", mandatory: false },
+                // Yang opsional di bawah
+                { id: "requireNIP", label: "NIP", mandatory: false },
+                { id: "requireRank", label: "Pangkat/Golongan", mandatory: false },
+                { id: "requirePosition", label: "Jabatan", mandatory: false },
               ].map((field) => (
                 <label key={field.id} className={`flex items-center p-3 border rounded ${!field.mandatory ? "hover:bg-gray-50 cursor-pointer" : "bg-gray-50 cursor-not-allowed opacity-80"}`}>
                   {!field.mandatory ? (
