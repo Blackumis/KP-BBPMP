@@ -62,22 +62,8 @@ export default function App() {
         }
       />
 
-      {/* Public route - Attendance (with layout) */}
-      <Route
-        path="/attendance/:id/:name"
-        element={
-          <MainLayout
-            isAuthenticated={isAuth}
-            user={user}
-            onLogout={() => {
-              authAPI.logout();
-              navigate("/login", { replace: true });
-            }}
-          >
-            <AttendancePage />
-          </MainLayout>
-        }
-      />
+      {/* Public route without MainLayout - Isolated attendance page */}
+      <Route path="/attendance/:id/:name" element={<AttendancePage />} />
 
       {/* Protected routes (with layout) */}
       <Route

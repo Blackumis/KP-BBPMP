@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { kopSuratAPI } from "../../services/api";
+import { showNotification } from "../../components/Notification";
 
 const EditKopSurat = () => {
   const { id } = useParams();
@@ -120,7 +121,7 @@ const EditKopSurat = () => {
 
       const response = await kopSuratAPI.update(id, submitData);
       if (response.success) {
-        alert("Kop surat berhasil diperbarui");
+        showNotification("Kop surat berhasil diperbarui", "success");
         navigate("/admin/kop-surat");
       } else {
         setError(response.message || "Gagal memperbarui kop surat");

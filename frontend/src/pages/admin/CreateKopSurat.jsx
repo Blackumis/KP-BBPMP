@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { kopSuratAPI } from "../../services/api";
+import { showNotification } from "../../components/Notification";
 
 const CreateKopSurat = () => {
   const navigate = useNavigate();
@@ -84,7 +85,7 @@ const CreateKopSurat = () => {
     try {
       const response = await kopSuratAPI.create(formData);
       if (response.success) {
-        alert("Kop surat berhasil dibuat");
+        showNotification("Kop surat berhasil dibuat", "success");
         navigate("/admin/kop-surat");
       } else {
         setError(response.message || "Gagal membuat kop surat");

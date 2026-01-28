@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { kopSuratAPI } from "../../services/api";
+import { showNotification } from "../../components/Notification";
 
 const ListKopSurat = () => {
   const [kopSurats, setKopSurats] = useState([]);
@@ -42,13 +43,13 @@ const ListKopSurat = () => {
       const res = await kopSuratAPI.delete(kopSuratId);
       if (res.success) {
         setKopSurats(kopSurats.filter((k) => k.id !== kopSuratId));
-        alert("Kop surat berhasil dihapus");
+        showNotification("Kop surat berhasil dihapus", "success");
       } else {
-        alert("Gagal menghapus kop surat");
+        showNotification("Gagal menghapus kop surat", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat menghapus kop surat");
+      showNotification("Terjadi kesalahan saat menghapus kop surat", "error");
     }
   };
 
@@ -61,13 +62,13 @@ const ListKopSurat = () => {
       const res = await kopSuratAPI.activate(kopSuratId);
       if (res.success) {
         await handleRefresh();
-        alert("Kop surat berhasil diaktifkan");
+        showNotification("Kop surat berhasil diaktifkan", "success");
       } else {
-        alert("Gagal mengaktifkan kop surat");
+        showNotification("Gagal mengaktifkan kop surat", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat mengaktifkan kop surat");
+      showNotification("Terjadi kesalahan saat mengaktifkan kop surat", "error");
     }
   };
 
@@ -80,13 +81,13 @@ const ListKopSurat = () => {
       const res = await kopSuratAPI.deactivate(kopSuratId);
       if (res.success) {
         await handleRefresh();
-        alert("Kop surat berhasil dinonaktifkan");
+        showNotification("Kop surat berhasil dinonaktifkan", "success");
       } else {
-        alert("Gagal menonaktifkan kop surat");
+        showNotification("Gagal menonaktifkan kop surat", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat menonaktifkan kop surat");
+      showNotification("Terjadi kesalahan saat menonaktifkan kop surat", "error");
     }
   };
 

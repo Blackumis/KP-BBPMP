@@ -665,7 +665,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
               <div className="space-y-3">
                 <div className="bg-blue-50 border border-blue-200 rounded p-3">
                   <p className="text-sm font-semibold text-blue-800 mb-2">
-                    🎯 {selectedFields.length} Field Dipilih
+                    {selectedFields.length} Field Dipilih
                   </p>
                   <p className="text-xs text-blue-600 mb-3">
                     Ctrl+Click untuk memilih/membatalkan. Drag untuk memindahkan bersama.
@@ -675,14 +675,14 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                     onClick={() => setSelectedFields([])}
                     className="w-full px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition mb-2"
                   >
-                    ✖ Batalkan Pilihan
+                    Batalkan Pilihan
                   </button>
                   <button
                     type="button"
                     onClick={deleteSelectedFields}
                     className="w-full px-3 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition"
                   >
-                    🗑️ Hapus Field Kustom Terpilih
+                    Hapus Field Kustom Terpilih
                   </button>
                 </div>
               </div>
