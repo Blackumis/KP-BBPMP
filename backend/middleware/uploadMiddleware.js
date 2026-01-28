@@ -48,7 +48,7 @@ const signatureStorage = multer.diskStorage({
 
       // Ambil nama kegiatan dari DB
       const [rows] = await pool.query(
-        "SELECT nama_kegiatan FROM events WHERE id = ?",
+        "SELECT nama_kegiatan FROM kegiatan WHERE id = ?",
         [event_id]
       );
 

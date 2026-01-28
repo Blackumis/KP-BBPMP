@@ -7,7 +7,7 @@ export const generateEventAttendanceReport = async (req, res) => {
     const { event_id } = req.params;
 
     /* ====================== GET EVENT DATA ====================== */
-    const [events] = await pool.query("SELECT id, nama_kegiatan, tanggal_mulai FROM events WHERE id = ?", [event_id]);
+    const [events] = await pool.query("SELECT id, nama_kegiatan, tanggal_mulai FROM kegiatan WHERE id = ?", [event_id]);
 
     if (events.length === 0) {
       return res.status(404).json({
@@ -26,7 +26,7 @@ export const generateEventAttendanceReport = async (req, res) => {
         unit_kerja,
         kabupaten_kota,
         signature_url
-      FROM attendances
+      FROM presensi
       WHERE event_id = ?
       ORDER BY urutan_absensi ASC`,
       [event_id],

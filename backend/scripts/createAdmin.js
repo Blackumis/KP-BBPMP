@@ -13,7 +13,7 @@ async function createDefaultAdmin() {
       port: process.env.DB_PORT || 3306,
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'kp_bbpmp_db'
+      database: process.env.DB_NAME || 'bbpmp_presensi'
     });
 
     console.log('Connected to database');
@@ -24,21 +24,21 @@ async function createDefaultAdmin() {
 
     // Check if admin exists
     const [existing] = await connection.query(
-      'SELECT id FROM admins WHERE username = ?',
+      'SELECT id FROM admin WHERE username = ?',
       ['admin']
     );
 
     if (existing.length > 0) {
       // Update existing admin
       await connection.query(
-        'UPDATE admins SET password = ?, email = ?, full_name = ? WHERE username = ?',
+        'UPDATE admin SET password = ?, email = ?, full_name = ? WHERE username = ?',
         [hashedPassword, 'admin@kpbbpmp.com', 'Administrator', 'admin']
       );
       console.log('✓ Default admin updated');
     } else {
       // Insert new admin
       await connection.query(
-        'INSERT INTO admins (username, email, password, full_name) VALUES (?, ?, ?, ?)',
+        'INSERT INTO admin (username, email, password, full_name) VALUES (?, ?, ?, ?)',
         ['admin', 'admin@kpbbpmp.com', hashedPassword, 'Administrator']
       );
       console.log('✓ Default admin created');

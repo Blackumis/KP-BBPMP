@@ -9,7 +9,7 @@ export const getEventForm = async (req, res) => {
     const [events] = await pool.query(
       `SELECT id, nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, 
               jam_mulai, jam_selesai, batas_waktu_absensi, form_config, status
-       FROM events WHERE id = ? AND status = 'active'`,
+       FROM kegiatan WHERE id = ? AND status = 'active'`,
       [id]
     );
 
@@ -95,7 +95,7 @@ export const submitAttendance = async (req, res) => {
     }
 
     // Check if event exists and is active
-    const [events] = await pool.query("SELECT id, status, batas_waktu_absensi, nomor_surat FROM events WHERE id = ?", [event_id]);
+    const [events] = await pool.query("SELECT id, status, batas_waktu_absensi, nomor_surat FROM kegiatan WHERE id = ?", [event_id]);
 
     if (events.length === 0) {
       return res.status(404).json({
@@ -122,7 +122,7 @@ export const submitAttendance = async (req, res) => {
     }
 
     // Check for duplicate attendance
-    const [existing] = await pool.query("SELECT id FROM attendances WHERE event_id = ? AND email = ?", [event_id, email]);
+    const [existing] = await pool.query("SELECT id FROM presensi WHERE event_id = ? AND email = ?", [event_id, email]);
 
     if (existing.length > 0) {
       return res.status(409).json({
@@ -132,7 +132,7 @@ export const submitAttendance = async (req, res) => {
     }
 
     // Get next attendance order
-    const [countResult] = await pool.query("SELECT COUNT(*) as count FROM attendances WHERE event_id = ?", [event_id]);
+    const [countResult] = await pool.query("SELECT COUNT(*) as count FROM presensi WHERE event_id = ?", [event_id]);
     const urutan_absensi = countResult[0].count + 1;
 
     // Generate certificate number format: urutan/nomor_surat
@@ -140,7 +140,7 @@ export const submitAttendance = async (req, res) => {
 
     // Insert attendance
     const [result] = await pool.query(
-      `INSERT INTO attendances 
+      `INSERT INTO presensi 
        (event_id, nama_lengkap, unit_kerja, nip, provinsi, kabupaten_kota, tanggal_lahir,
         nomor_hp, pangkat_golongan, jabatan, email, signature_url, urutan_absensi, nomor_sertifikat)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -173,7 +173,7 @@ export const getEventAttendances = async (req, res) => {
     const offset = (page - 1) * limit;
 
     let query = `
-      SELECT * FROM attendances 
+      SELECT * FROM presensi 
       WHERE event_id = ?
     `;
     const params = [event_id];
@@ -189,7 +189,7 @@ export const getEventAttendances = async (req, res) => {
     const [attendances] = await pool.query(query, params);
 
     // Get total count
-    let countQuery = "SELECT COUNT(*) as total FROM attendances WHERE event_id = ?";
+    let countQuery = "SELECT COUNT(*) as total FROM presensi WHERE event_id = ?";
     const countParams = [event_id];
     if (status) {
       countQuery += " AND status = ?";
@@ -223,7 +223,7 @@ export const getAttendanceById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [attendances] = await pool.query("SELECT * FROM attendances WHERE id = ?", [id]);
+    const [attendances] = await pool.query("SELECT * FROM presensi WHERE id = ?", [id]);
 
     if (attendances.length === 0) {
       return res.status(404).json({
@@ -252,7 +252,7 @@ export const updateAttendance = async (req, res) => {
     const { nama_lengkap, unit_kerja, nip, provinsi, kabupaten_kota, tanggal_lahir, nomor_hp, pangkat_golongan, jabatan, email } = req.body;
 
     // Check if attendance exists
-    const [existing] = await pool.query("SELECT * FROM attendances WHERE id = ?", [id]);
+    const [existing] = await pool.query("SELECT * FROM presensi WHERE id = ?", [id]);
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
@@ -262,7 +262,7 @@ export const updateAttendance = async (req, res) => {
 
     // Update attendance
     await pool.query(
-      `UPDATE attendances SET 
+      `UPDATE presensi SET 
        nama_lengkap = ?, unit_kerja = ?, nip = ?, provinsi = ?, kabupaten_kota = ?,
        tanggal_lahir = ?, nomor_hp = ?, pangkat_golongan = ?, jabatan = ?, email = ?
        WHERE id = ?`,
@@ -287,7 +287,7 @@ export const deleteAttendance = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [existing] = await pool.query("SELECT * FROM attendances WHERE id = ?", [id]);
+    const [existing] = await pool.query("SELECT * FROM presensi WHERE id = ?", [id]);
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
@@ -295,7 +295,7 @@ export const deleteAttendance = async (req, res) => {
       });
     }
 
-    await pool.query("DELETE FROM attendances WHERE id = ?", [id]);
+    await pool.query("DELETE FROM presensi WHERE id = ?", [id]);
 
     res.json({
       success: true,
