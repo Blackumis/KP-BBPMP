@@ -167,10 +167,59 @@ export const referenceAPI = {
   },
 };
 
+export const kopSuratAPI = {
+  getAll: async (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return fetchWithAuth(`/kop-surat${qs ? `?${qs}` : ""}`);
+  },
+
+  getById: async (id) => fetchWithAuth(`/kop-surat/${id}`),
+
+  create: async (kopSuratData) => {
+    const formData = new FormData();
+    formData.append("nama_data", kopSuratData.nama_data);
+    formData.append("periode_mulai", kopSuratData.periode_mulai);
+    formData.append("periode_selesai", kopSuratData.periode_selesai);
+    formData.append("jenis_ttd", kopSuratData.jenis_ttd || "QR");
+    formData.append("is_active", kopSuratData.is_active !== undefined ? kopSuratData.is_active : true);
+
+    if (kopSuratData.kop_image instanceof File) {
+      formData.append("kop_image", kopSuratData.kop_image);
+    }
+
+    return fetchWithAuth("/kop-surat", { method: "POST", body: formData });
+  },
+
+  update: async (id, kopSuratData) => {
+    const formData = new FormData();
+    formData.append("nama_data", kopSuratData.nama_data);
+    formData.append("periode_mulai", kopSuratData.periode_mulai);
+    formData.append("periode_selesai", kopSuratData.periode_selesai);
+    formData.append("jenis_ttd", kopSuratData.jenis_ttd || "QR");
+    formData.append("is_active", kopSuratData.is_active !== undefined ? kopSuratData.is_active : true);
+
+    if (kopSuratData.kop_image instanceof File) {
+      formData.append("kop_image", kopSuratData.kop_image);
+    }
+
+    return fetchWithAuth(`/kop-surat/${id}`, {
+      method: "PUT",
+      body: formData,
+    });
+  },
+
+  delete: async (id) => fetchWithAuth(`/kop-surat/${id}`, { method: "DELETE" }),
+
+  // 🔥 INI YANG TADI HILANG
+  activate: async (id) => fetchWithAuth(`/kop-surat/${id}/activate`, { method: "PATCH" }),
+
+  deactivate: async (id) => fetchWithAuth(`/kop-surat/${id}/deactivate`, { method: "PATCH" }),
+};
+
 export const certificateAPI = {
   // Single attendance certificate operations
   generateSingle: async (attendanceId) => fetchWithAuth(`/certificates/generate/${attendanceId}`, { method: "POST" }),
-  
+
   // Download certificate by certificate number (public endpoint, returns blob)
   downloadByCertificateNumber: async (certificateNumber) => {
     const encodedCertNumber = encodeURIComponent(certificateNumber);
@@ -181,14 +230,14 @@ export const certificateAPI = {
     }
     return await response.blob();
   },
-  
+
   sendSingle: async (attendanceId) => fetchWithAuth(`/certificates/send/${attendanceId}`, { method: "POST" }),
 
   // Event-level certificate operations
   generateEvent: async (eventId) => fetchWithAuth(`/certificates/generate-event/${eventId}`, { method: "POST" }),
   sendEvent: async (eventId) => fetchWithAuth(`/certificates/send-event/${eventId}`, { method: "POST" }),
   getHistory: async (eventId) => fetchWithAuth(`/certificates/history/${eventId}`, { method: "GET" }),
-  
+
   // Validate certificate (public endpoint)
   validate: async (certificateNumber) => fetchPublic(`/certificates/validate/${certificateNumber}`),
 };
@@ -217,3 +266,4 @@ export const officialsAPI = {
 };
 
 export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, certificate: certificateAPI, templates: templatesAPI, officials: officialsAPI };
+export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, kopSurat: kopSuratAPI, certificate: certificateAPI, templates: templatesAPI };

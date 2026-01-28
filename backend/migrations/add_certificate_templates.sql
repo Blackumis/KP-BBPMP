@@ -1,5 +1,8 @@
 -- Migration: Add certificate_templates table
 -- This table stores reusable certificate background templates
+-- Note: Column additions to events table are handled by add_certificate_layout.sql
+
+USE kp_bbpmp_db;
 
 CREATE TABLE IF NOT EXISTS certificate_templates (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -16,8 +19,5 @@ CREATE TABLE IF NOT EXISTS certificate_templates (
   INDEX idx_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Add template_id column to events table for linking to stored templates
-ALTER TABLE events 
-ADD COLUMN template_id INT NULL AFTER template_sertifikat,
-ADD COLUMN template_source ENUM('upload', 'template') DEFAULT 'upload' AFTER template_id,
-ADD FOREIGN KEY (template_id) REFERENCES certificate_templates(id) ON DELETE SET NULL;
+-- Note: Columns template_id, template_source, and certificate_layout 
+-- are added via add_certificate_layout.sql migration

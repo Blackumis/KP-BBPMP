@@ -1,23 +1,20 @@
--- Migration: Add certificate_layout column to events table
+-- Migration: Add certificate_layout and related columns to events table
 -- This allows storing custom certificate layouts created in the editor
+-- 
+-- NOTE: This SQL file uses stored procedures for MySQL 5.7 compatibility.
+-- For programmatic migrations, use runCertificateColumnsMigration.js instead.
+-- The main runMigrations.js uses JavaScript-based approach which is more reliable.
 
 USE kp_bbpmp_db;
 
--- Add certificate_layout column if it doesn't exist
-ALTER TABLE events 
-ADD COLUMN IF NOT EXISTS certificate_layout JSON NULL COMMENT 'Custom certificate layout configuration' 
-AFTER template_sertifikat;
+-- Simple approach for MySQL 8.0.28+ (uses IF NOT EXISTS)
+-- For older MySQL versions, use the JavaScript migration instead.
 
--- Add template_id column if it doesn't exist (for template library)
-ALTER TABLE events 
-ADD COLUMN IF NOT EXISTS template_id INT NULL COMMENT 'Reference to certificate_templates table'
-AFTER template_sertifikat;
+-- These statements will fail on older MySQL but work on 8.0.28+
+-- Use runMigrations.js or runCertificateColumnsMigration.js for full compatibility
 
--- Add template_source column if it doesn't exist
-ALTER TABLE events 
-ADD COLUMN IF NOT EXISTS template_source ENUM('upload', 'template') DEFAULT 'upload' COMMENT 'Source of certificate template'
-AFTER template_id;
-
--- Add index for template_id
-ALTER TABLE events
-ADD INDEX IF NOT EXISTS idx_template_id (template_id);
+-- Manual migration commands (run individually if needed):
+-- ALTER TABLE events ADD COLUMN template_id INT NULL AFTER template_sertifikat;
+-- ALTER TABLE events ADD COLUMN template_source ENUM('upload', 'template') DEFAULT 'upload' AFTER template_id;
+-- ALTER TABLE events ADD COLUMN certificate_layout JSON NULL AFTER template_source;
+-- ALTER TABLE events ADD INDEX idx_template_id (template_id);
