@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { eventsAPI } from "../../services/api";
 import OfficialsManagement from "../../components/OfficialsManagement";
 import { showNotification } from "../../components/Notification";
+import { useMemo } from "react";
 
 const ListEvents = () => {
   const [events, setEvents] = useState([]);
@@ -10,7 +11,14 @@ const ListEvents = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState("events");
   const itemsPerPage = 10;
-
+  const sortedEvents = useMemo(() => {
+    return [...events].sort((a, b) => {
+      if (!a.tanggal_mulai) return 1;
+      if (!b.tanggal_mulai) return -1;
+      return new Date(b.tanggal_mulai) - new Date(a.tanggal_mulai);
+    });
+  }, [events]);
+  
   useEffect(() => {
     (async () => {
       try {
@@ -107,21 +115,13 @@ const ListEvents = () => {
       <div className="flex gap-4 mb-6 border-b">
         <button
           onClick={() => setActiveTab("events")}
-          className={`pb-3 px-4 font-semibold transition-all ${
-            activeTab === "events"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-600 hover:text-blue-600"
-          }`}
+          className={`pb-3 px-4 font-semibold transition-all ${activeTab === "events" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600 hover:text-blue-600"}`}
         >
           Daftar Kegiatan
         </button>
         <button
           onClick={() => setActiveTab("officials")}
-          className={`pb-3 px-4 font-semibold transition-all ${
-            activeTab === "officials"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-600 hover:text-blue-600"
-          }`}
+          className={`pb-3 px-4 font-semibold transition-all ${activeTab === "officials" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600 hover:text-blue-600"}`}
         >
           Pejabat Penandatangan
         </button>
@@ -156,173 +156,173 @@ const ListEvents = () => {
             </div>
           </div>
 
-      {events.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <p className="text-gray-500 text-lg">Belum ada kegiatan yang dibuat.</p>
-          <Link to="/admin/create" className="mt-2 text-blue-600 hover:text-blue-800 font-medium inline-block">
-            Buat sekarang
-          </Link>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white">
-            <thead className="bg-gray-100 border-b-2 border-gray-200">
-              <tr>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Kegiatan</th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nomor Surat</th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal</th>
-                <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Peserta</th>
-                <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((event, index) => (
-                <tr key={event.id} className="hover:bg-gray-50 transition duration-150">
-                  <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                  <td className="py-4 px-4 text-sm font-medium text-gray-900">{event.nama_kegiatan}</td>
-                  <td className="py-4 px-4 text-sm text-gray-500">{event.nomor_surat || "-"}</td>
-                  <td className="py-4 px-4 text-sm text-gray-500">
-                    {event.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString("id-ID", { year: "numeric", month: "short", day: "numeric" }) : "-"}
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{event.total_attendances || 0}</span>
-                  </td>
-                  <td className="py-4 px-4 text-center">{getStatusBadge(event.status)}</td>
-                  <td className="py-4 px-4 text-center">
-                    <div className="flex justify-center gap-2 flex-wrap">
-                      {event.status === "draft" && (
-                        <button
-                          onClick={() => handleActivate(event.id, event.nama_kegiatan)}
-                          className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-200"
-                          title="Aktifkan Kegiatan"
-                        >
-                          Aktifkan
-                        </button>
-                      )}
-                      {event.status === "active" && (
-                        <>
+          {events.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <p className="text-gray-500 text-lg">Belum ada kegiatan yang dibuat.</p>
+              <Link to="/admin/create" className="mt-2 text-blue-600 hover:text-blue-800 font-medium inline-block">
+                Buat sekarang
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white">
+                <thead className="bg-gray-100 border-b-2 border-gray-200">
+                  <tr>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Kegiatan</th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nomor Surat</th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal</th>
+                    <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Peserta</th>
+                    <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                    <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {sortedEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((event, index) => (
+                    <tr key={event.id} className="hover:bg-gray-50 transition duration-150">
+                      <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                      <td className="py-4 px-4 text-sm font-medium text-gray-900">{event.nama_kegiatan}</td>
+                      <td className="py-4 px-4 text-sm text-gray-500">{event.nomor_surat || "-"}</td>
+                      <td className="py-4 px-4 text-sm text-gray-500">
+                        {event.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString("id-ID", { year: "numeric", month: "short", day: "numeric" }) : "-"}
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{event.total_attendances || 0}</span>
+                      </td>
+                      <td className="py-4 px-4 text-center">{getStatusBadge(event.status)}</td>
+                      <td className="py-4 px-4 text-center">
+                        <div className="flex justify-center gap-2 flex-wrap">
+                          {event.status === "draft" && (
+                            <button
+                              onClick={() => handleActivate(event.id, event.nama_kegiatan)}
+                              className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-200"
+                              title="Aktifkan Kegiatan"
+                            >
+                              Aktifkan
+                            </button>
+                          )}
+                          {event.status === "active" && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  const shareUrl = `${window.location.origin}/attendance/${event.id}/${encodeURIComponent(event.nama_kegiatan)}`;
+                                  navigator.clipboard
+                                    .writeText(shareUrl)
+                                    .then(() => {
+                                      alert("Link berhasil disalin ke clipboard!");
+                                    })
+                                    .catch(() => {
+                                      // Fallback for older browsers
+                                      prompt("Salin link berikut:", shareUrl);
+                                    });
+                                }}
+                                className="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-full hover:bg-cyan-200"
+                                title="Salin Link Absensi"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                                  />
+                                </svg>
+                              </button>
+                              <a
+                                href={`/attendance/${event.id}/${event.nama_kegiatan}`}
+                                target="_blank"
+                                rel="noopener"
+                                className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium hover:bg-green-200"
+                                title="Buka Form Absensi"
+                              >
+                                Form
+                              </a>
+                            </>
+                          )}
+                          <Link
+                            to={`/admin/edit/${event.id}`}
+                            className="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium hover:bg-yellow-200"
+                            title="Edit Kegiatan"
+                          >
+                            Edit
+                          </Link>
+                          <Link
+                            to={`/attendancelist/${event.id}/${encodeURIComponent(event.nama_kegiatan)}`}
+                            className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium hover:bg-purple-200"
+                            title="Lihat Daftar Hadir"
+                          >
+                            Peserta
+                          </Link>
                           <button
-                            onClick={() => {
-                              const shareUrl = `${window.location.origin}/attendance/${event.id}/${encodeURIComponent(event.nama_kegiatan)}`;
-                              navigator.clipboard
-                                .writeText(shareUrl)
-                                .then(() => {
-                                  alert("Link berhasil disalin ke clipboard!");
-                                })
-                                .catch(() => {
-                                  // Fallback for older browsers
-                                  prompt("Salin link berikut:", shareUrl);
-                                });
-                            }}
-                            className="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-full hover:bg-cyan-200"
-                            title="Salin Link Absensi"
+                            onClick={() => handleDelete(event.id, event.nama_kegiatan)}
+                            className="inline-flex items-center justify-center w-7 h-7 bg-red-100 text-red-700 rounded-full text-xs font-medium hover:bg-red-200"
+                            title="Hapus Kegiatan"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                               />
                             </svg>
                           </button>
-                          <a
-                            href={`/attendance/${event.id}/${event.nama_kegiatan}`}
-                            target="_blank"
-                            rel="noopener"
-                            className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium hover:bg-green-200"
-                            title="Buka Form Absensi"
-                          >
-                            Form
-                          </a>
-                        </>
-                      )}
-                      <Link
-                        to={`/admin/edit/${event.id}`}
-                        className="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium hover:bg-yellow-200"
-                        title="Edit Kegiatan"
-                      >
-                        Edit
-                      </Link>
-                      <Link
-                        to={`/attendancelist/${event.id}/${encodeURIComponent(event.nama_kegiatan)}`}
-                        className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium hover:bg-purple-200"
-                        title="Lihat Daftar Hadir"
-                      >
-                        Peserta
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(event.id, event.nama_kegiatan)}
-                        className="inline-flex items-center justify-center w-7 h-7 bg-red-100 text-red-700 rounded-full text-xs font-medium hover:bg-red-200"
-                        title="Hapus Kegiatan"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-      {/* Pagination */}
-      {events.length > itemsPerPage && (
-        <div className="flex items-center justify-between mt-6 pt-4 border-t">
-          <div className="text-sm text-gray-500">
-            Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, events.length)} dari {events.length} kegiatan
-          </div>
-          <div className="flex gap-2 items-center">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Sebelumnya"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            {Array.from({ length: Math.ceil(events.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 text-sm font-medium rounded-md ${currentPage === page ? "bg-blue-600 text-white" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"}`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(events.length / itemsPerPage)))}
-              disabled={currentPage === Math.ceil(events.length / itemsPerPage)}
-              className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Selanjutnya"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+          {/* Pagination */}
+          {events.length > itemsPerPage && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t">
+              <div className="text-sm text-gray-500">
+                Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, events.length)} dari {events.length} kegiatan
+              </div>
+              <div className="flex gap-2 items-center">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Sebelumnya"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                {Array.from({ length: Math.ceil(events.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1 text-sm font-medium rounded-md ${currentPage === page ? "bg-blue-600 text-white" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"}`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(events.length / itemsPerPage)))}
+                  disabled={currentPage === Math.ceil(events.length / itemsPerPage)}
+                  className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Selanjutnya"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
