@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { eventsAPI } from "../../services/api";
 import OfficialsManagement from "../../components/OfficialsManagement";
+import { showNotification } from "../../components/Notification";
 
 const ListEvents = () => {
   const [events, setEvents] = useState([]);
@@ -102,9 +103,16 @@ const ListEvents = () => {
         </Link>
       </div>
 
-      <div className="flex justify-between items-center mb-6 border-b pb-4">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-          <span className="bg-blue-100 text-blue-700 py-1 px-3 rounded text-sm mr-3">Admin</span>
+      {/* Sub-tabs for Events and Officials */}
+      <div className="flex gap-4 mb-6 border-b">
+        <button
+          onClick={() => setActiveTab("events")}
+          className={`pb-3 px-4 font-semibold transition-all ${
+            activeTab === "events"
+              ? "border-b-2 border-blue-600 text-blue-600"
+              : "text-gray-600 hover:text-blue-600"
+          }`}
+        >
           Daftar Kegiatan
         </button>
         <button

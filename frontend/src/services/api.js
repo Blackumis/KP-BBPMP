@@ -265,5 +265,4 @@ export const officialsAPI = {
   delete: async (id) => fetchWithAuth(`/officials/${id}`, { method: "DELETE" }),
 };
 
-export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, certificate: certificateAPI, templates: templatesAPI, officials: officialsAPI };
-export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, kopSurat: kopSuratAPI, certificate: certificateAPI, templates: templatesAPI };
+export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, kopSurat: kopSuratAPI, certificate: certificateAPI, templates: templatesAPI, officials: officialsAPI };

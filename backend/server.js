@@ -16,6 +16,7 @@ import certificateRoutes from "./routes/certificateRoutes.js";
 import referenceRoutes from "./routes/referenceRoutes.js";
 import templateRoutes from "./routes/templateRoutes.js";
 import kopSuratRoutes from "./routes/kopSuratRoutes.js";
+import officialRoutes from "./routes/officialRoutes.js";
 
 dotenv.config();
 

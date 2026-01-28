@@ -71,9 +71,9 @@ async function runMigrations() {
     console.log('✓ Tables created successfully');
     console.log('✓ Kabupaten/Kota data inserted');
 
-    // Run SQL migrations (for certificate_templates table)
+    // Run SQL migrations (for additional tables)
     console.log('\nRunning SQL migrations...');
-    const sqlMigrations = ['add_certificate_templates.sql'];
+    const sqlMigrations = ['add_officials.sql', 'add_certificate_templates.sql'];
     
     for (const migrationFile of sqlMigrations) {
       const migrationPath = join(__dirname, migrationFile);
@@ -98,7 +98,8 @@ async function runMigrations() {
     const columnsToAdd = [
       { name: 'template_id', definition: 'INT NULL', after: 'template_sertifikat' },
       { name: 'template_source', definition: "ENUM('upload', 'template') DEFAULT 'upload'", after: 'template_id' },
-      { name: 'certificate_layout', definition: 'JSON NULL', after: 'template_source' }
+      { name: 'certificate_layout', definition: 'JSON NULL', after: 'template_source' },
+      { name: 'official_id', definition: 'INT NULL', after: 'certificate_layout' }
     ];
 
     for (const col of columnsToAdd) {
@@ -106,9 +107,12 @@ async function runMigrations() {
       console.log(added ? `✓ Added column: events.${col.name}` : `⚠ Column already exists: events.${col.name}`);
     }
 
-    // Add index
+    // Add indexes
     const indexAdded = await addIndexIfNotExists(connection, 'events', 'idx_template_id', 'template_id');
     console.log(indexAdded ? '✓ Added index: idx_template_id' : '⚠ Index already exists: idx_template_id');
+    
+    const officialIndexAdded = await addIndexIfNotExists(connection, 'events', 'idx_official_id', 'official_id');
+    console.log(officialIndexAdded ? '✓ Added index: idx_official_id' : '⚠ Index already exists: idx_official_id');
 
     // Create default admin
     console.log('\nCreating default admin...');

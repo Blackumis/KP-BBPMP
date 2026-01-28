@@ -18,6 +18,22 @@ CREATE TABLE IF NOT EXISTS admins (
   INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Table: officials (pejabat penanda tangan sertifikat)
+CREATE TABLE IF NOT EXISTS officials (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL COMMENT 'Nama pejabat',
+  position VARCHAR(255) NOT NULL COMMENT 'Jabatan pejabat',
+  signature_image_path VARCHAR(500) NULL COMMENT 'Path gambar tanda tangan basah',
+  signature_qr_path VARCHAR(500) NULL COMMENT 'Path QR code untuk verifikasi',
+  is_active BOOLEAN DEFAULT TRUE COMMENT 'Status aktif pejabat',
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE CASCADE,
+  INDEX idx_name (name),
+  INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Table: events (kegiatan)
 CREATE TABLE IF NOT EXISTS events (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -29,15 +45,22 @@ CREATE TABLE IF NOT EXISTS events (
   jam_selesai TIME NOT NULL,
   batas_waktu_absensi DATETIME NOT NULL,
   template_sertifikat VARCHAR(255) NULL,
+  template_id INT NULL COMMENT 'Reference to certificate_templates table',
+  template_source ENUM('upload', 'template') DEFAULT 'upload' COMMENT 'Source of certificate template',
+  certificate_layout JSON NULL COMMENT 'Custom certificate layout configuration',
+  official_id INT NULL COMMENT 'Reference to officials table for certificate signing',
   form_config JSON NULL COMMENT 'Configuration for dynamic form fields',
   status ENUM('draft', 'active', 'closed') DEFAULT 'draft',
   created_by INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE CASCADE,
+  FOREIGN KEY (official_id) REFERENCES officials(id) ON DELETE SET NULL,
   INDEX idx_nomor_surat (nomor_surat),
   INDEX idx_status (status),
-  INDEX idx_tanggal (tanggal_mulai, tanggal_selesai)
+  INDEX idx_tanggal (tanggal_mulai, tanggal_selesai),
+  INDEX idx_template_id (template_id),
+  INDEX idx_official_id (official_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table: attendances (absensi)

@@ -33,6 +33,11 @@ async function runMigration() {
         name: 'certificate_layout',
         definition: 'JSON NULL COMMENT "Custom certificate layout configuration"',
         after: 'template_source'
+      },
+      {
+        name: 'official_id',
+        definition: 'INT NULL COMMENT "Reference to officials table for certificate signing"',
+        after: 'certificate_layout'
       }
     ];
 
@@ -56,7 +61,7 @@ async function runMigration() {
       }
     }
 
-    // Check and add index
+    // Check and add index for template_id
     const [indexRows] = await connection.query(
       `SELECT COUNT(*) as count FROM information_schema.STATISTICS 
        WHERE TABLE_SCHEMA = DATABASE() 
@@ -69,6 +74,21 @@ async function runMigration() {
       console.log('✓ Added index: idx_template_id');
     } else {
       console.log('⚠ Index already exists: idx_template_id');
+    }
+
+    // Check and add index for official_id
+    const [officialIndexRows] = await connection.query(
+      `SELECT COUNT(*) as count FROM information_schema.STATISTICS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'events' 
+       AND INDEX_NAME = 'idx_official_id'`
+    );
+
+    if (officialIndexRows[0].count === 0) {
+      await connection.query('ALTER TABLE events ADD INDEX idx_official_id (official_id)');
+      console.log('✓ Added index: idx_official_id');
+    } else {
+      console.log('⚠ Index already exists: idx_official_id');
     }
 
     console.log('\n✅ Migration completed successfully!');
