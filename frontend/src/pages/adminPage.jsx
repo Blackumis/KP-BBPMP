@@ -7,6 +7,7 @@ import EditEvent from "./admin/EditEvent";
 import ListKopSurat from "./admin/ListKopSurat";
 import CreateKopSurat from "./admin/CreateKopSurat";
 import EditKopSurat from "./admin/EditKopSurat";
+import ListPejabat from "./admin/ListPejabat";
 import "../index.css";
 
 const AdminPage = () => {
@@ -21,6 +22,7 @@ const AdminPage = () => {
         <Route path="kop-surat" element={<ListKopSurat />} />
         <Route path="kop-surat/create" element={<CreateKopSurat />} />
         <Route path="kop-surat/edit/:id" element={<EditKopSurat />} />
+        <Route path="pejabat" element={<ListPejabat />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </div>

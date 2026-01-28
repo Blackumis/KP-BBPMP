@@ -146,6 +146,9 @@ const ListKopSurat = () => {
         <Link to="/admin/kop-surat" className="px-4 py-2 border-b-2 border-blue-600 text-blue-600 font-semibold hover:bg-gray-50">
           Kop Surat
         </Link>
+        <Link to="/admin/pejabat" className="px-4 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:text-blue-600 hover:bg-gray-50">
+          Pejabat
+        </Link>
       </div>
 
       <div className="flex justify-between items-center mb-6 border-b pb-4">

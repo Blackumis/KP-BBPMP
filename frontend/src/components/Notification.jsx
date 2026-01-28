@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const Notification = ({ message, type = 'info', duration = 2500, onClose }) => {
+const Notification = ({ message, type = 'info', duration = 2000, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
 
