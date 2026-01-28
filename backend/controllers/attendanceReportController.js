@@ -5,11 +5,8 @@ import { generateAttendanceReport } from "../utils/pdfGenerator.js";
 export const generateEventAttendanceReport = async (req, res) => {
   try {
     const { event_id } = req.params;
-    console.log("🔵 CONTROLLER: Starting PDF generation");
-    console.log("🔵 CONTROLLER: Request params:", req.params);
-    /* ======================
-       GET EVENT DATA
-    ====================== */
+
+    /* ====================== GET EVENT DATA ====================== */
     const [events] = await pool.query("SELECT id, nama_kegiatan, tanggal_mulai FROM events WHERE id = ?", [event_id]);
 
     if (events.length === 0) {
@@ -21,9 +18,7 @@ export const generateEventAttendanceReport = async (req, res) => {
 
     const event = events[0];
 
-    /* ======================
-       GET ATTENDANCES
-    ====================== */
+    /* ====================== GET ATTENDANCES ====================== */
     const [attendances] = await pool.query(
       `SELECT 
         urutan_absensi,
@@ -44,9 +39,12 @@ export const generateEventAttendanceReport = async (req, res) => {
       });
     }
 
-    /* ======================
-       FORMAT DATA
-    ====================== */
+    /* ====================== GET ACTIVE KOP SURAT ====================== */
+    const [kopRows] = await pool.query("SELECT kop_url FROM kop_surat WHERE is_active = 1 LIMIT 1");
+
+    const kopPath = kopRows.length ? kopRows[0].kop_url : null;
+
+    /* ====================== FORMAT DATA ====================== */
     const eventTitle = event.nama_kegiatan;
     const eventDate = new Date(event.tanggal_mulai).toLocaleDateString("id-ID", {
       day: "numeric",
@@ -54,24 +52,39 @@ export const generateEventAttendanceReport = async (req, res) => {
       year: "numeric",
     });
 
-    /* ======================
-       GENERATE PDF
-    ====================== */
-    console.log("🔵 CONTROLLER: Event title:", eventTitle);
-    console.log("🔵 CONTROLLER: Event date:", eventDate);
-    console.log("🔵 CONTROLLER: Attendances count:", attendances.length);
-    console.log("🔵 CONTROLLER: First attendance:", attendances[0]);
+    /* ====================== GENERATE PDF ====================== */
+    const result = await generateAttendanceReport(eventTitle, eventDate, attendances, kopPath);
 
-    const result = await generateAttendanceReport(eventTitle, eventDate, attendances);
+    if (!result.success) {
+      throw new Error("PDF generation failed");
+    }
 
-    console.log("🔵 CONTROLLER: PDF Result:", result);
-    
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+    // Tunggu sedikit untuk memastikan file benar-benar siap
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
-    res.download(result.filepath);
+    const safeEventTitle = eventTitle.replace(/[<>:"/\\|?*]+/g, "").trim();
+    const downloadName = `Laporan Absensi - ${safeEventTitle} (${eventDate}).pdf`;
+
+    // Kirim file
+    res.download(result.filepath, downloadName, (err) => {
+      if (err) {
+        console.error("Download error:", err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: "Failed to download PDF",
+          });
+        }
+      }
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed generate attendance report" });
+    console.error("Controller error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to generate attendance report",
+        error: err.message,
+      });
+    }
   }
 };

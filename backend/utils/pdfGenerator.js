@@ -18,13 +18,13 @@ const getFontName = (fontFamily, fontWeight) => {
   // Map custom font families to PDFKit built-in fonts
   const fontMap = {
     "Times-Roman": fontWeight === "bold" ? "Times-Bold" : "Times-Roman",
-    "Helvetica": fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica",
-    "Courier": fontWeight === "bold" ? "Courier-Bold" : "Courier",
+    Helvetica: fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica",
+    Courier: fontWeight === "bold" ? "Courier-Bold" : "Courier",
     "Times-Bold": "Times-Bold",
     "Helvetica-Bold": "Helvetica-Bold",
     "Courier-Bold": "Courier-Bold",
   };
-  
+
   return fontMap[fontFamily] || (fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica");
 };
 
@@ -67,7 +67,7 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
       if (hasCustomLayout) {
         // Use custom layout from certificate editor
         const layout = eventData.certificate_layout;
-        
+
         // Helper function to get dynamic field value
         const getDynamicValue = (fieldName) => {
           switch (fieldName) {
@@ -100,7 +100,7 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
             case "nomor_sertifikat":
               return `Nomor Sertifikat: ${attendanceData.nomor_sertifikat}`;
             case "validation_url":
-              return `${process.env.FRONTEND_URL || 'http://localhost:5173'}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
+              return `${process.env.FRONTEND_URL || "http://localhost:5173"}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
             case "signature_authority":
               return `TTD_ATASAN_${attendanceData.nomor_sertifikat}`;
             default:
@@ -123,18 +123,18 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
               if (qrData) {
                 // Generate QR code as buffer
                 const qrBuffer = await QRCode.toBuffer(qrData, {
-                  errorCorrectionLevel: 'H',
-                  type: 'png',
+                  errorCorrectionLevel: "H",
+                  type: "png",
                   width: 200,
-                  margin: 1
+                  margin: 1,
                 });
-                
+
                 // Calculate position based on textAlign
                 let qrX = xPos;
                 if (field.textAlign === "center") {
                   qrX = xPos - fieldWidth / 2;
                 }
-                
+
                 // Add QR image to PDF
                 doc.image(qrBuffer, qrX, yPos, {
                   width: fieldWidth,
@@ -148,17 +148,17 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
           } else {
             // Text field (static or dynamic)
             const fontName = getFontName(field.fontFamily || "Times-Roman", field.fontWeight || "normal");
-            doc.font(fontName).fontSize(field.fontSize).fillColor('black');
-            
+            doc.font(fontName).fontSize(field.fontSize).fillColor("black");
+
             // Get text content
             const text = field.type === "text" ? field.content : getDynamicValue(field.field);
-            
+
             if (text) {
               // Calculate position and width based on alignment
               let textX = xPos;
               let textWidth = fieldWidth;
               let textAlign = field.textAlign || "left";
-              
+
               // Set text options
               const textOptions = {
                 width: textWidth,
@@ -172,7 +172,7 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
               } else if (textAlign === "right") {
                 textX = xPos - fieldWidth;
               }
-              
+
               // Render text
               doc.text(text, textX, yPos, textOptions);
             }
@@ -213,17 +213,18 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
         doc.fontSize(10).text(`Nomor Sertifikat: ${attendanceData.nomor_sertifikat}`, 0, 450, { align: "center" });
 
         // Validation link - pointing to frontend
-        const validationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
-        doc.fontSize(9)
-           .fillColor('blue')
-           .text('Validasi Sertifikat:', 0, 470, { align: 'center', continued: false })
-           .fillColor('blue')
-           .text(validationUrl, 0, 485, { 
-             align: 'center',
-             link: validationUrl,
-             underline: true
-           })
-           .fillColor('black');
+        const validationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
+        doc
+          .fontSize(9)
+          .fillColor("blue")
+          .text("Validasi Sertifikat:", 0, 470, { align: "center", continued: false })
+          .fillColor("blue")
+          .text(validationUrl, 0, 485, {
+            align: "center",
+            link: validationUrl,
+            underline: true,
+          })
+          .fillColor("black");
 
         // Additional info at bottom
         doc.fontSize(9).text(`NIP: ${attendanceData.nip || "-"}`, 100, 520, { align: "left" });
@@ -257,46 +258,70 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
   });
 };
 
+// Definisi reportsDir di level module
 const reportsDir = path.join(__dirname, "../reports");
+
+// Pastikan folder reports ada
 if (!fs.existsSync(reportsDir)) {
   fs.mkdirSync(reportsDir, { recursive: true });
 }
 
-export const generateAttendanceReport = async (eventTitle, eventDate, attendanceList) => {
+export const generateAttendanceReport = async (eventTitle, eventDate, attendanceList, kopPath = null) => {
   return new Promise((resolve, reject) => {
     try {
-      const safeTitle = eventTitle.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-      const filename = `laporan-absensi-${safeTitle}.pdf`;
-      const filepath = path.join(reportsDir, filename);
+      console.log('=== PDF GENERATOR START ===');
+      console.log('Event Title:', eventTitle);
+      console.log('Event Date:', eventDate);
+      console.log('Attendance count:', attendanceList.length);
+      console.log('Kop path:', kopPath);
+      console.log('Reports directory:', reportsDir); // ← CEK PATH INI
 
-      if (fs.existsSync(filepath)) {
-        return resolve({
-          success: true,
-          filename,
-          filepath,
-          alreadyExists: true,
-        });
-      }
+      const safeTitle = eventTitle.replace(/[<>:"/\\|?*]+/g, "").trim();
+      const filename = `Laporan-${safeTitle}-${Date.now()}.pdf`;
+      const filepath = path.join(reportsDir, filename);
+      
+      console.log('PDF filepath:', filepath);
 
       const doc = new PDFDocument({ size: "A4", margin: 50 });
       const writeStream = fs.createWriteStream(filepath);
+      
+      writeStream.on("error", (err) => {
+        console.error('WriteStream error:', err);
+        reject(err);
+      });
+
+      doc.on("error", (err) => {
+        console.error('PDFDocument error:', err);
+        reject(err);
+      });
+
       doc.pipe(writeStream);
 
       /* ===== KOP SURAT (HEADER IMAGE) ===== */
-      // Path relatif dari file controller ini ke folder assets di backend
-      const kopPath = path.join(__dirname, "..", "assets", "kop-surat.png");
-      
-      if (fs.existsSync(kopPath)) {
-        doc.image(kopPath, 50, 30, {
-          width: 495,
-          align: "center",
-        });
-        doc.moveDown(9);
+      let kopAbsolutePath = null;
+
+      if (kopPath) {
+        kopAbsolutePath = path.join(__dirname, "..", kopPath);
+        console.log('Kop absolute path:', kopAbsolutePath);
+        console.log('Kop exists:', fs.existsSync(kopAbsolutePath));
+      }
+
+      if (kopAbsolutePath && fs.existsSync(kopAbsolutePath)) {
+        try {
+          doc.image(kopAbsolutePath, 50, 30, {
+            width: 495,
+            align: "center",
+          });
+          doc.moveDown(9);
+          console.log('Kop image added successfully');
+        } catch (imgErr) {
+          console.error('Kop image error:', imgErr.message);
+        }
       }
 
       /* ===== HEADER ===== */
-      doc.fontSize(14).font("Times-Bold").text(eventTitle, { align: "center" });
-      doc.moveDown(0.5).fontSize(11).font("Times-Roman").text(eventDate, { align: "center" });
+      doc.fontSize(14).font("Helvetica-Bold").text(eventTitle, { align: "center" });
+      doc.moveDown(0.5).fontSize(11).font("Helvetica").text(eventDate, { align: "center" });
       doc.moveDown(2);
 
       /* ===== TABLE SETUP ===== */
@@ -304,23 +329,21 @@ export const generateAttendanceReport = async (eventTitle, eventDate, attendance
       const rowHeight = 35;
       const headerHeight = 25;
 
-      const col = { 
-        no: 50, 
-        nama: 80, 
-        unit: 200, 
-        kota: 320, 
-        ttd: 445 
+      const col = {
+        no: 50,
+        nama: 80,
+        unit: 200,
+        kota: 320,
+        ttd: 445,
       };
 
       const tableWidth = 495;
 
       /* ===== TABLE HEADER BACKGROUND ===== */
-      doc
-        .rect(50, tableTop, tableWidth, headerHeight)
-        .fillAndStroke("#d3d3d3", "#000000");
+      doc.rect(50, tableTop, tableWidth, headerHeight).fillAndStroke("#d3d3d3", "#000000");
 
       /* ===== TABLE HEADER TEXT ===== */
-      doc.fillColor("#000000").font("Times-Bold").fontSize(10);
+      doc.fillColor("#000000").font("Helvetica-Bold").fontSize(10);
       doc.text("No", col.no, tableTop + 7, { width: 25, align: "center" });
       doc.text("Nama Lengkap", col.nama, tableTop + 7, { width: 115, align: "center" });
       doc.text("Unit Kerja", col.unit, tableTop + 7, { width: 115, align: "center" });
@@ -335,20 +358,12 @@ export const generateAttendanceReport = async (eventTitle, eventDate, attendance
       doc.moveTo(col.ttd - 5, tableTop).lineTo(col.ttd - 5, tableTop + headerHeight).stroke();
 
       /* ===== ROWS ===== */
-      doc.font("Times-Roman").fontSize(10);
+      doc.font("Helvetica").fontSize(10);
       let y = tableTop + headerHeight;
 
       attendanceList.forEach((item, index) => {
         if (y > doc.page.height - 100) {
           doc.addPage();
-          
-          if (fs.existsSync(kopPath)) {
-            doc.image(kopPath, 50, 30, {
-              width: 495,
-              align: "center",
-            });
-          }
-          
           y = 150;
         }
 
@@ -357,7 +372,7 @@ export const generateAttendanceReport = async (eventTitle, eventDate, attendance
 
         doc.fillColor("#000000");
         doc.text(index + 1, col.no, y + 7, { width: 25, align: "center" });
-        doc.text(item.nama_lengkap, col.nama, y + 7, { width: 115 });
+        doc.text(item.nama_lengkap || "-", col.nama, y + 7, { width: 115 });
         doc.text(item.unit_kerja || "-", col.unit, y + 7, { width: 115 });
         doc.text(item.kabupaten_kota || "-", col.kota, y + 7, { width: 115 });
 
@@ -366,27 +381,31 @@ export const generateAttendanceReport = async (eventTitle, eventDate, attendance
         if (signatureField) {
           let signaturePath;
 
-          if (signatureField.startsWith("http://") || signatureField.startsWith("https://")) {
-            const urlObj = new URL(signatureField);
-            const relativePath = urlObj.pathname;
-            signaturePath = path.join(__dirname, "..", relativePath);
-          } else {
-            signaturePath = path.join(__dirname, "..", signatureField);
-          }
+          try {
+            if (signatureField.startsWith("http://") || signatureField.startsWith("https://")) {
+              const urlObj = new URL(signatureField);
+              const relativePath = urlObj.pathname;
+              signaturePath = path.join(__dirname, "..", relativePath);
+            } else {
+              signaturePath = path.join(__dirname, "..", signatureField);
+            }
 
-          if (fs.existsSync(signaturePath)) {
-            try {
-              doc.image(signaturePath, col.ttd + 10, y + 5, {
-                width: 95,
-                height: 30,
-                fit: [95, 30],
-                align: "center",
-                valign: "center",
-              });
-            } catch (imgErr) {
+            if (fs.existsSync(signaturePath)) {
+              const stats = fs.statSync(signaturePath);
+              if (stats.size > 0) {
+                doc.image(signaturePath, col.ttd + 10, y + 5, {
+                  width: 95,
+                  height: 30,
+                  fit: [95, 30],
+                });
+              } else {
+                doc.text("-", col.ttd, y + 7, { width: 105, align: "center" });
+              }
+            } else {
               doc.text("-", col.ttd, y + 7, { width: 105, align: "center" });
             }
-          } else {
+          } catch (imgErr) {
+            console.error(`Signature error for ${item.nama_lengkap}:`, imgErr.message);
             doc.text("-", col.ttd, y + 7, { width: 105, align: "center" });
           }
         } else {
@@ -398,28 +417,41 @@ export const generateAttendanceReport = async (eventTitle, eventDate, attendance
         doc.moveTo(col.unit - 5, y).lineTo(col.unit - 5, y + rowHeight).stroke();
         doc.moveTo(col.kota - 5, y).lineTo(col.kota - 5, y + rowHeight).stroke();
         doc.moveTo(col.ttd - 5, y).lineTo(col.ttd - 5, y + rowHeight).stroke();
-        
+
         doc.moveTo(545, y).lineTo(545, y + rowHeight).stroke();
         doc.moveTo(50, y + rowHeight).lineTo(545, y + rowHeight).stroke();
 
         y += rowHeight;
       });
 
+      console.log('Finishing PDF document...');
       doc.end();
 
       writeStream.on("finish", () => {
-        resolve({
-          success: true,
-          filename,
-          filepath,
-          alreadyExists: false,
-        });
+        try {
+          const stats = fs.statSync(filepath);
+          console.log(`PDF generated: ${filename} (${stats.size} bytes)`);
+          
+          if (stats.size === 0) {
+            reject(new Error('Generated PDF is empty'));
+            return;
+          }
+          
+          resolve({
+            success: true,
+            filename,
+            filepath,
+          });
+        } catch (err) {
+          console.error('File verification error:', err);
+          reject(new Error('Failed to verify PDF file'));
+        }
       });
 
-      writeStream.on("error", (err) => {
-        reject(err);
-      });
     } catch (err) {
+      console.error('=== PDF GENERATOR ERROR ===');
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
       reject(err);
     }
   });

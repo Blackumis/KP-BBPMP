@@ -15,6 +15,7 @@ import attendanceRoutes from "./routes/attendanceRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
 import referenceRoutes from "./routes/referenceRoutes.js";
 import templateRoutes from "./routes/templateRoutes.js";
+import kopSuratRoutes from "./routes/kopSuratRoutes.js";
 
 dotenv.config();
 
@@ -32,7 +33,7 @@ app.use(
   cors({
     origin: process.env.NODE_ENV === "production" ? true : ["http://localhost:5173", "http://localhost:2000", "http://localhost:3000"],
     credentials: true,
-  })
+  }),
 );
 
 // Body parser
@@ -45,7 +46,7 @@ app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
-  })
+  }),
 );
 
 // Static uploads
@@ -59,6 +60,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/reference", referenceRoutes);
 app.use("/api/templates", templateRoutes);
+app.use("/api/kop-surat", kopSuratRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

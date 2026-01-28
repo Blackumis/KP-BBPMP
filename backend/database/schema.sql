@@ -144,4 +144,20 @@ CREATE TABLE IF NOT EXISTS certificate_templates (
   INDEX idx_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Table: kop_surat (Letterhead configuration based on active period)
+CREATE TABLE IF NOT EXISTS kop_surat (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nama_data VARCHAR(255) NOT NULL COMMENT 'Nama instansi/unit, contoh: BBPMP Provinsi Jawa Tengah',
+  periode_mulai DATE NOT NULL COMMENT 'Tanggal mulai berlaku kop',
+  periode_selesai DATE NOT NULL COMMENT 'Tanggal akhir berlaku kop',
+  kop_url VARCHAR(500) NOT NULL COMMENT 'Path atau URL gambar kop surat',
+  jenis_ttd ENUM('QR', 'BASAH') DEFAULT 'QR' COMMENT 'Jenis tanda tangan yang digunakan',
+  is_active BOOLEAN DEFAULT TRUE COMMENT 'Status aktif kop',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX idx_periode (periode_mulai, periode_selesai),
+  INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Note: Run 'npm run create-admin' to create the default admin user

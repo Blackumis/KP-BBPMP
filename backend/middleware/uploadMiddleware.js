@@ -74,6 +74,35 @@ const signatureStorage = multer.diskStorage({
   },
 });
 
+const uploadKopSuratDir = path.join(__dirname, "../uploads/kop-surat");
+if (!fs.existsSync(uploadKopSuratDir)) {
+  fs.mkdirSync(uploadKopSuratDir, { recursive: true });
+}
+const kopSuratStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadKopSuratDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, `kop-${unique}${ext}`);
+  },
+});
+const kopSuratFileFilter = (req, file, cb) => {
+  const allowed = /jpeg|jpg|png/;
+  const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+  const mime = allowed.test(file.mimetype);
+  if (ext && mime) cb(null, true);
+  else cb(new Error("Only JPG/PNG allowed for kop surat"));
+};
+export const uploadKopSurat = multer({
+  storage: kopSuratStorage,
+  limits: {
+    fileSize: parseInt(process.env.MAX_KOP_SURAT_SIZE) || 2 * 1024 * 1024, // 2MB
+  },
+  fileFilter: kopSuratFileFilter,
+});
+
 
 
 // File filter
