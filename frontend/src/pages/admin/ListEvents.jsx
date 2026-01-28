@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { eventsAPI } from "../../services/api";
-import OfficialsManagement from "../../components/OfficialsManagement";
 import { showNotification } from "../../components/Notification";
 import { useMemo } from "react";
 
@@ -9,7 +8,6 @@ const ListEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState("events");
   const itemsPerPage = 10;
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {
@@ -109,29 +107,10 @@ const ListEvents = () => {
         <Link to="/admin/kop-surat" className="px-4 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:text-blue-600 hover:bg-gray-50">
           Kop Surat
         </Link>
+        <Link to="/admin/pejabat" className="px-4 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:text-blue-600 hover:bg-gray-50">
+          Pejabat
+        </Link>
       </div>
-
-      {/* Sub-tabs for Events and Officials */}
-      <div className="flex gap-4 mb-6 border-b">
-        <button
-          onClick={() => setActiveTab("events")}
-          className={`pb-3 px-4 font-semibold transition-all ${activeTab === "events" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600 hover:text-blue-600"}`}
-        >
-          Daftar Kegiatan
-        </button>
-        <button
-          onClick={() => setActiveTab("officials")}
-          className={`pb-3 px-4 font-semibold transition-all ${activeTab === "officials" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600 hover:text-blue-600"}`}
-        >
-          Pejabat Penandatangan
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === "officials" ? (
-        <OfficialsManagement />
-      ) : (
-        <>
           <div className="flex justify-between items-center mb-6 border-b pb-4">
             <h2 className="text-2xl font-bold text-gray-800 flex items-center">
               <span className="bg-blue-100 text-blue-700 py-1 px-3 rounded text-sm mr-3">Admin</span>
