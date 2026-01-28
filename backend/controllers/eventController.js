@@ -31,18 +31,38 @@ export const createEvent = async (req, res) => {
       }
     }
 
-    // Validation
-    if (!nama_kegiatan || !nomor_surat || !tanggal_mulai || !tanggal_selesai || 
+    // Debug logging
+    console.log('Received data:', {
+      nama_kegiatan,
+      nomor_surat,
+      tanggal_mulai,
+      tanggal_selesai,
+      jam_mulai,
+      jam_selesai,
+      batas_waktu_absensi
+    });
+
+    // Validation - check for empty strings and null/undefined
+    if (!nama_kegiatan?.trim() || !nomor_surat?.trim() || !tanggal_mulai || !tanggal_selesai || 
         !jam_mulai || !jam_selesai || !batas_waktu_absensi) {
       return res.status(400).json({
         success: false,
-        message: 'All required fields must be filled'
+        message: 'All required fields must be filled',
+        missing: {
+          nama_kegiatan: !nama_kegiatan?.trim(),
+          nomor_surat: !nomor_surat?.trim(),
+          tanggal_mulai: !tanggal_mulai,
+          tanggal_selesai: !tanggal_selesai,
+          jam_mulai: !jam_mulai,
+          jam_selesai: !jam_selesai,
+          batas_waktu_absensi: !batas_waktu_absensi
+        }
       });
     }
 
     // Check if nomor_surat exists
     const [existing] = await pool.query(
-      'SELECT id FROM events WHERE nomor_surat = ?',
+      'SELECT id FROM kegiatan WHERE nomor_surat = ?',
       [nomor_surat]
     );
 
@@ -63,7 +83,7 @@ export const createEvent = async (req, res) => {
     } else if (template_source === 'template' && template_id) {
       // Verify template exists
       const [templateCheck] = await pool.query(
-        'SELECT id, image_path FROM certificate_templates WHERE id = ? AND is_active = TRUE',
+        'SELECT id, image_path FROM template_sertif WHERE id = ? AND is_active = TRUE',
         [template_id]
       );
       if (templateCheck.length === 0) {
@@ -78,7 +98,7 @@ export const createEvent = async (req, res) => {
 
     // Insert event with template_id, template_source, certificate_layout, and official_id
     const [result] = await pool.query(
-      `INSERT INTO events 
+      `INSERT INTO kegiatan 
        (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
         batas_waktu_absensi, template_sertifikat, certificate_layout, template_id, template_source, form_config, official_id, created_by, status) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
@@ -118,9 +138,9 @@ export const getAllEvents = async (req, res) => {
 
     let query = `
       SELECT e.*, a.full_name as created_by_name,
-             (SELECT COUNT(*) FROM attendances WHERE event_id = e.id) as total_attendances
-      FROM events e
-      LEFT JOIN admins a ON e.created_by = a.id
+             (SELECT COUNT(*) FROM presensi WHERE event_id = e.id) as total_attendances
+      FROM kegiatan e
+      LEFT JOIN admin a ON e.created_by = a.id
     `;
 
     const params = [];
@@ -136,7 +156,7 @@ export const getAllEvents = async (req, res) => {
     const [events] = await pool.query(query, params);
 
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM events';
+    let countQuery = 'SELECT COUNT(*) as total FROM kegiatan';
     if (status) {
       countQuery += ' WHERE status = ?';
     }
@@ -171,9 +191,9 @@ export const getEventById = async (req, res) => {
 
     const [events] = await pool.query(
       `SELECT e.*, a.full_name as created_by_name,
-              (SELECT COUNT(*) FROM attendances WHERE event_id = e.id) as total_attendances
-       FROM events e
-       LEFT JOIN admins a ON e.created_by = a.id
+              (SELECT COUNT(*) FROM presensi WHERE event_id = e.id) as total_attendances
+       FROM kegiatan e
+       LEFT JOIN admin a ON e.created_by = a.id
        WHERE e.id = ?`,
       [id]
     );
@@ -228,7 +248,7 @@ export const updateEvent = async (req, res) => {
     }
 
     // Check if event exists
-    const [existing] = await pool.query('SELECT * FROM events WHERE id = ?', [id]);
+    const [existing] = await pool.query('SELECT * FROM kegiatan WHERE id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
@@ -248,9 +268,9 @@ export const updateEvent = async (req, res) => {
       // Only delete if the existing template was an upload (not from library)
       // Check template_source column - if it's 'template', the file is shared and should NOT be deleted
       if (existing[0].template_source === 'upload' && existing[0].template_sertifikat) {
-        // Also verify it's not referenced by certificate_templates table (double safety check)
+        // Also verify it's not referenced by template_sertif table (double safety check)
         const [libraryCheck] = await pool.query(
-          'SELECT id FROM certificate_templates WHERE image_path = ?',
+          'SELECT id FROM template_sertif WHERE image_path = ?',
           [existing[0].template_sertifikat]
         );
         if (libraryCheck.length === 0) {
@@ -270,7 +290,7 @@ export const updateEvent = async (req, res) => {
     } else if (template_source === 'template' && template_id) {
       // Verify template exists
       const [templateCheck] = await pool.query(
-        'SELECT id, image_path FROM certificate_templates WHERE id = ? AND is_active = TRUE',
+        'SELECT id, image_path FROM template_sertif WHERE id = ? AND is_active = TRUE',
         [template_id]
       );
       if (templateCheck.length === 0) {
@@ -287,7 +307,7 @@ export const updateEvent = async (req, res) => {
 
     // Update event with proper template tracking, certificate_layout, and official_id
     await pool.query(
-      `UPDATE events SET 
+      `UPDATE kegiatan SET 
        nama_kegiatan = ?, nomor_surat = ?, tanggal_mulai = ?, tanggal_selesai = ?,
        jam_mulai = ?, jam_selesai = ?, batas_waktu_absensi = ?, template_sertifikat = ?,
        certificate_layout = ?, template_id = ?, template_source = ?, form_config = ?, official_id = ?, status = ?
@@ -322,7 +342,7 @@ export const deleteEvent = async (req, res) => {
 
     // Check if event exists - include template_source to determine if we should delete the file
     const [existing] = await pool.query(
-      'SELECT template_sertifikat, template_source, template_id FROM events WHERE id = ?', 
+      'SELECT template_sertifikat, template_source, template_id FROM kegiatan WHERE id = ?', 
       [id]
     );
     if (existing.length === 0) {
@@ -335,9 +355,9 @@ export const deleteEvent = async (req, res) => {
     // Only delete template file if it was an upload (not from library)
     // Library templates (template_source = 'template') are shared and should NOT be deleted
     if (existing[0].template_sertifikat && existing[0].template_source === 'upload') {
-      // Double check: verify the file is not used by certificate_templates table
+      // Double check: verify the file is not used by template_sertif table
       const [libraryCheck] = await pool.query(
-        'SELECT id FROM certificate_templates WHERE image_path = ?',
+        'SELECT id FROM template_sertif WHERE image_path = ?',
         [existing[0].template_sertifikat]
       );
       
@@ -351,7 +371,7 @@ export const deleteEvent = async (req, res) => {
     }
 
     // Delete event (cascade will delete related attendances)
-    await pool.query('DELETE FROM events WHERE id = ?', [id]);
+    await pool.query('DELETE FROM kegiatan WHERE id = ?', [id]);
 
     res.json({
       success: true,
@@ -372,7 +392,7 @@ export const activateEvent = async (req, res) => {
     const { id } = req.params;
 
     const [existing] = await pool.query(
-      'SELECT id FROM events WHERE id = ?',
+      'SELECT id FROM kegiatan WHERE id = ?',
       [id]
     );
 
@@ -381,7 +401,7 @@ export const activateEvent = async (req, res) => {
     }
 
     await pool.query(
-      "UPDATE events SET status = 'active' WHERE id = ?",
+      "UPDATE kegiatan SET status = 'active' WHERE id = ?",
       [id]
     );
 
@@ -398,7 +418,7 @@ export const generateFormLink = async (req, res) => {
     const { id } = req.params;
 
     // Check if event exists
-    const [events] = await pool.query('SELECT id, nama_kegiatan, status FROM events WHERE id = ?', [id]);
+    const [events] = await pool.query('SELECT id, nama_kegiatan, status FROM kegiatan WHERE id = ?', [id]);
     if (events.length === 0) {
       return res.status(404).json({
         success: false,
@@ -408,7 +428,7 @@ export const generateFormLink = async (req, res) => {
 
     // Update status to active if draft
     if (events[0].status === 'draft') {
-      await pool.query('UPDATE events SET status = ? WHERE id = ?', ['active', id]);
+      await pool.query('UPDATE kegiatan SET status = ? WHERE id = ?', ['active', id]);
     }
 
     // Generate link

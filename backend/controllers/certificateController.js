@@ -18,9 +18,9 @@ export const generateSingleCertificate = async (req, res) => {
       `SELECT a.*, e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai, 
               e.template_sertifikat, e.nomor_surat, e.certificate_layout, e.official_id,
               o.signature_qr_path as official_qr_path
-       FROM attendances a
-       JOIN events e ON a.event_id = e.id
-       LEFT JOIN officials o ON e.official_id = o.id
+       FROM presensi a
+       JOIN kegiatan e ON a.event_id = e.id
+       LEFT JOIN pejabat o ON e.official_id = o.id
        WHERE a.id = ?`,
       [attendance_id]
     );
@@ -65,7 +65,7 @@ export const generateSingleCertificate = async (req, res) => {
 
     // Update attendance record
     await pool.query(
-      'UPDATE attendances SET certificate_path = ?, status = ? WHERE id = ?',
+      'UPDATE presensi SET certificate_path = ?, status = ? WHERE id = ?',
       [result.filepath, 'menunggu_sertifikat', attendance_id]
     );
 
@@ -95,8 +95,8 @@ export const generateEventCertificates = async (req, res) => {
     // Get event details with official information
     const [events] = await pool.query(
       `SELECT e.*, o.signature_qr_path as official_qr_path
-       FROM events e
-       LEFT JOIN officials o ON e.official_id = o.id
+       FROM kegiatan e
+       LEFT JOIN pejabat o ON e.official_id = o.id
        WHERE e.id = ?`,
       [event_id]
     );
@@ -124,7 +124,7 @@ export const generateEventCertificates = async (req, res) => {
 
     // Get all attendances for the event
     const [attendances] = await pool.query(
-      'SELECT * FROM attendances WHERE event_id = ? ORDER BY urutan_absensi ASC',
+      'SELECT * FROM presensi WHERE event_id = ? ORDER BY urutan_absensi ASC',
       [event_id]
     );
 
@@ -156,7 +156,7 @@ export const generateEventCertificates = async (req, res) => {
         if (result.success) {
           // Update attendance record
           await pool.query(
-            'UPDATE attendances SET certificate_path = ? WHERE id = ?',
+            'UPDATE presensi SET certificate_path = ? WHERE id = ?',
             [result.filepath, attendance.id]
           );
 
@@ -204,8 +204,8 @@ export const sendCertificate = async (req, res) => {
     // Get attendance data
     const [attendances] = await pool.query(
       `SELECT a.*, e.nama_kegiatan
-       FROM attendances a
-       JOIN events e ON a.event_id = e.id
+       FROM presensi a
+       JOIN kegiatan e ON a.event_id = e.id
        WHERE a.id = ?`,
       [attendance_id]
     );
@@ -261,7 +261,7 @@ export const sendCertificate = async (req, res) => {
 
     // Update status
     await pool.query(
-      'UPDATE attendances SET status = ?, sent_at = NOW() WHERE id = ?',
+      'UPDATE presensi SET status = ?, sent_at = NOW() WHERE id = ?',
       ['sertifikat_terkirim', attendance_id]
     );
 
@@ -291,8 +291,8 @@ export const sendEventCertificates = async (req, res) => {
     // Get all attendances with certificates
     const [attendances] = await pool.query(
       `SELECT a.*, e.nama_kegiatan
-       FROM attendances a
-       JOIN events e ON a.event_id = e.id
+       FROM presensi a
+       JOIN kegiatan e ON a.event_id = e.id
        WHERE a.event_id = ? AND a.certificate_path IS NOT NULL
        ORDER BY a.urutan_absensi ASC`,
       [event_id]
@@ -340,7 +340,7 @@ export const sendEventCertificates = async (req, res) => {
         if (emailResult.success) {
           // Update status
           await pool.query(
-            'UPDATE attendances SET status = ?, sent_at = NOW() WHERE id = ?',
+            'UPDATE presensi SET status = ?, sent_at = NOW() WHERE id = ?',
             ['sertifikat_terkirim', attendance.id]
           );
 
@@ -399,7 +399,7 @@ export const getCertificateHistory = async (req, res) => {
     const [attendances] = await pool.query(
       `SELECT id, nama_lengkap, email, nomor_sertifikat, status, 
               certificate_path, sent_at, created_at
-       FROM attendances
+       FROM presensi
        WHERE event_id = ?
        ORDER BY urutan_absensi ASC`,
       [event_id]
@@ -460,8 +460,8 @@ export const validateCertificate = async (req, res) => {
         e.tanggal_selesai,
         e.jam_mulai,
         e.jam_selesai
-       FROM attendances a
-       JOIN events e ON a.event_id = e.id
+       FROM presensi a
+       JOIN kegiatan e ON a.event_id = e.id
        WHERE a.nomor_sertifikat = ?`,
       [certificate_number]
     );
@@ -540,8 +540,8 @@ export const downloadCertificate = async (req, res) => {
     // Get certificate data
     const [attendances] = await pool.query(
       `SELECT a.*, e.nama_kegiatan
-       FROM attendances a
-       JOIN events e ON a.event_id = e.id
+       FROM presensi a
+       JOIN kegiatan e ON a.event_id = e.id
        WHERE a.nomor_sertifikat = ?`,
       [certificate_number]
     );

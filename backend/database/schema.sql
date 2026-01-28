@@ -2,11 +2,11 @@
 -- Attendance and Certificate Management System
 
 -- Create Database
-CREATE DATABASE IF NOT EXISTS kp_bbpmp_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE kp_bbpmp_db;
+CREATE DATABASE IF NOT EXISTS bbpmp_presensi CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE bbpmp_presensi;
 
--- Table: admins
-CREATE TABLE IF NOT EXISTS admins (
+-- Table: admin
+CREATE TABLE IF NOT EXISTS admin (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(100) UNIQUE NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS admins (
   INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Table: officials (pejabat penanda tangan sertifikat)
-CREATE TABLE IF NOT EXISTS officials (
+-- Table: pejabat
+CREATE TABLE IF NOT EXISTS pejabat (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL COMMENT 'Nama pejabat',
   position VARCHAR(255) NOT NULL COMMENT 'Jabatan pejabat',
@@ -29,13 +29,13 @@ CREATE TABLE IF NOT EXISTS officials (
   created_by INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES admin(id) ON DELETE CASCADE,
   INDEX idx_name (name),
   INDEX idx_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Table: events (kegiatan)
-CREATE TABLE IF NOT EXISTS events (
+-- Table: kegiatan
+CREATE TABLE IF NOT EXISTS kegiatan (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nama_kegiatan VARCHAR(255) NOT NULL,
   nomor_surat VARCHAR(100) UNIQUE NOT NULL,
@@ -45,17 +45,17 @@ CREATE TABLE IF NOT EXISTS events (
   jam_selesai TIME NOT NULL,
   batas_waktu_absensi DATETIME NOT NULL,
   template_sertifikat VARCHAR(255) NULL,
-  template_id INT NULL COMMENT 'Reference to certificate_templates table',
+  template_id INT NULL COMMENT 'Reference to template_sertif table',
   template_source ENUM('upload', 'template') DEFAULT 'upload' COMMENT 'Source of certificate template',
   certificate_layout JSON NULL COMMENT 'Custom certificate layout configuration',
-  official_id INT NULL COMMENT 'Reference to officials table for certificate signing',
+  official_id INT NULL COMMENT 'Reference to pejabat table for certificate signing',
   form_config JSON NULL COMMENT 'Configuration for dynamic form fields',
   status ENUM('draft', 'active', 'closed') DEFAULT 'draft',
   created_by INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE CASCADE,
-  FOREIGN KEY (official_id) REFERENCES officials(id) ON DELETE SET NULL,
+  FOREIGN KEY (created_by) REFERENCES admin(id) ON DELETE CASCADE,
+  FOREIGN KEY (official_id) REFERENCES pejabat(id) ON DELETE SET NULL,
   INDEX idx_nomor_surat (nomor_surat),
   INDEX idx_status (status),
   INDEX idx_tanggal (tanggal_mulai, tanggal_selesai),
@@ -63,8 +63,8 @@ CREATE TABLE IF NOT EXISTS events (
   INDEX idx_official_id (official_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Table: attendances (absensi)
-CREATE TABLE IF NOT EXISTS attendances (
+-- Table: presensi
+CREATE TABLE IF NOT EXISTS presensi (
   id INT AUTO_INCREMENT PRIMARY KEY,
   event_id INT NOT NULL,
   nama_lengkap VARCHAR(255) NOT NULL,
@@ -86,23 +86,11 @@ CREATE TABLE IF NOT EXISTS attendances (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY unique_attendance (event_id, email),
-  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+  FOREIGN KEY (event_id) REFERENCES kegiatan(id) ON DELETE CASCADE,
   INDEX idx_event_id (event_id),
   INDEX idx_email (email),
   INDEX idx_status (status),
   INDEX idx_urutan (event_id, urutan_absensi)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Table: certificate_config
-CREATE TABLE IF NOT EXISTS certificate_config (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  event_id INT NOT NULL,
-  format_nomor JSON NOT NULL COMMENT 'Certificate number format configuration',
-  template_path VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-  INDEX idx_event_id (event_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table: kabupaten_kota (reference data)
@@ -151,8 +139,8 @@ INSERT INTO kabupaten_kota (nama, tipe) VALUES
 ('Surakarta', 'kota'),
 ('Tegal', 'kota');
 
--- Table: certificate_templates (reusable certificate backgrounds)
-CREATE TABLE IF NOT EXISTS certificate_templates (
+-- Table: template_sertif (reusable certificate backgrounds)
+CREATE TABLE IF NOT EXISTS template_sertif (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT NULL,
@@ -162,7 +150,7 @@ CREATE TABLE IF NOT EXISTS certificate_templates (
   created_by INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES admin(id) ON DELETE CASCADE,
   INDEX idx_name (name),
   INDEX idx_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

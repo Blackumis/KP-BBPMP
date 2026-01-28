@@ -17,7 +17,7 @@ export const login = async (req, res) => {
 
     // Find admin
     const [admins] = await pool.query(
-      'SELECT * FROM admins WHERE username = ? OR email = ?',
+      'SELECT * FROM admin WHERE username = ? OR email = ?',
       [username, username]
     );
 
@@ -89,7 +89,7 @@ export const register = async (req, res) => {
 
     // Check if admin exists
     const [existingAdmins] = await pool.query(
-      'SELECT id FROM admins WHERE username = ? OR email = ?',
+      'SELECT id FROM admin WHERE username = ? OR email = ?',
       [username, email]
     );
 
@@ -105,7 +105,7 @@ export const register = async (req, res) => {
 
     // Insert admin
     const [result] = await pool.query(
-      'INSERT INTO admins (username, email, password, full_name) VALUES (?, ?, ?, ?)',
+      'INSERT INTO admin (username, email, password, full_name) VALUES (?, ?, ?, ?)',
       [username, email, hashedPassword, full_name]
     );
 
@@ -133,7 +133,7 @@ export const register = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const [admins] = await pool.query(
-      'SELECT id, username, email, full_name, created_at FROM admins WHERE id = ?',
+      'SELECT id, username, email, full_name, created_at FROM admin WHERE id = ?',
       [req.user.id]
     );
 
@@ -172,7 +172,7 @@ export const changePassword = async (req, res) => {
 
     // Get admin
     const [admins] = await pool.query(
-      'SELECT password FROM admins WHERE id = ?',
+      'SELECT password FROM admin WHERE id = ?',
       [req.user.id]
     );
 
@@ -197,7 +197,7 @@ export const changePassword = async (req, res) => {
 
     // Update password
     await pool.query(
-      'UPDATE admins SET password = ? WHERE id = ?',
+      'UPDATE admin SET password = ? WHERE id = ?',
       [hashedPassword, req.user.id]
     );
 

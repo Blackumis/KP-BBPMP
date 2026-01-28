@@ -7,9 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "migrate": "node migrations/runMigrations.js",
-    "migrate:templates": "node migrations/addTemplates.js",
-    "migrate:fix-template-source": "node migrations/fixTemplateSource.js",
+    "setup-db": "echo Please run: mysql -u root -p < database/schema.sql",
     "create-admin": "node scripts/createAdmin.js"
   },
   "keywords": [

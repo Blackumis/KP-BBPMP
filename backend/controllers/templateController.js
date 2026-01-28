@@ -13,8 +13,8 @@ export const getAllTemplates = async (req, res) => {
     
     let query = `
       SELECT t.*, a.full_name as created_by_name
-      FROM certificate_templates t
-      LEFT JOIN admins a ON t.created_by = a.id
+      FROM template_sertif t
+      LEFT JOIN admin a ON t.created_by = a.id
     `;
     
     if (active_only === 'true') {
@@ -45,8 +45,8 @@ export const getTemplateById = async (req, res) => {
     
     const [templates] = await pool.query(
       `SELECT t.*, a.full_name as created_by_name
-       FROM certificate_templates t
-       LEFT JOIN admins a ON t.created_by = a.id
+       FROM template_sertif t
+       LEFT JOIN admin a ON t.created_by = a.id
        WHERE t.id = ?`,
       [id]
     );
@@ -94,7 +94,7 @@ export const createTemplate = async (req, res) => {
     const image_path = 'uploads/templates/' + req.file.filename;
     
     const [result] = await pool.query(
-      `INSERT INTO certificate_templates (name, description, image_path, created_by)
+      `INSERT INTO template_sertif (name, description, image_path, created_by)
        VALUES (?, ?, ?, ?)`,
       [name, description || null, image_path, req.user.id]
     );
@@ -126,7 +126,7 @@ export const updateTemplate = async (req, res) => {
     
     // Check if template exists
     const [existing] = await pool.query(
-      'SELECT * FROM certificate_templates WHERE id = ?',
+      'SELECT * FROM template_sertif WHERE id = ?',
       [id]
     );
     
@@ -150,7 +150,7 @@ export const updateTemplate = async (req, res) => {
     }
     
     await pool.query(
-      `UPDATE certificate_templates 
+      `UPDATE template_sertif 
        SET name = ?, description = ?, image_path = ?, is_active = ?
        WHERE id = ?`,
       [
@@ -182,7 +182,7 @@ export const deleteTemplate = async (req, res) => {
     
     // Check if template exists
     const [existing] = await pool.query(
-      'SELECT * FROM certificate_templates WHERE id = ?',
+      'SELECT * FROM template_sertif WHERE id = ?',
       [id]
     );
     
@@ -196,7 +196,7 @@ export const deleteTemplate = async (req, res) => {
     // Check if template is used by any events (check BOTH template_id and image_path for backward compatibility)
     // Some older events may not have template_id set but still use the template via template_sertifikat path
     const [events] = await pool.query(
-      'SELECT COUNT(*) as count FROM events WHERE template_id = ? OR template_sertifikat = ?',
+      'SELECT COUNT(*) as count FROM kegiatan WHERE template_id = ? OR template_sertifikat = ?',
       [id, existing[0].image_path]
     );
     
@@ -213,7 +213,7 @@ export const deleteTemplate = async (req, res) => {
       fs.unlinkSync(imagePath);
     }
     
-    await pool.query('DELETE FROM certificate_templates WHERE id = ?', [id]);
+    await pool.query('DELETE FROM template_sertif WHERE id = ?', [id]);
     
     res.json({
       success: true,
