@@ -60,6 +60,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/reference", referenceRoutes);
 app.use("/api/templates", templateRoutes);
+app.use("/api/officials", officialRoutes);
 app.use("/api/kop-surat", kopSuratRoutes);
 
 // Health check

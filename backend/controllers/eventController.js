@@ -16,6 +16,7 @@ export const createEvent = async (req, res) => {
       jam_mulai,
       jam_selesai,
       batas_waktu_absensi,
+      official_id,
       form_config
     } = req.body;
     
@@ -75,17 +76,18 @@ export const createEvent = async (req, res) => {
       template_path = templateCheck[0].image_path;
     }
 
-    // Insert event with template_id, template_source, and certificate_layout
+    // Insert event with template_id, template_source, certificate_layout, and official_id
     const [result] = await pool.query(
       `INSERT INTO events 
        (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
-        batas_waktu_absensi, template_sertifikat, certificate_layout, template_id, template_source, form_config, created_by, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+        batas_waktu_absensi, template_sertifikat, certificate_layout, template_id, template_source, form_config, official_id, created_by, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
         certificate_layout ? JSON.stringify(certificate_layout) : null,
-        final_template_id, template_source, JSON.stringify(form_config || {}), req.user.id
+        final_template_id, template_source, JSON.stringify(form_config || {}), 
+        official_id || null, req.user.id
       ]
     );
 
@@ -209,6 +211,7 @@ export const updateEvent = async (req, res) => {
       jam_mulai,
       jam_selesai,
       batas_waktu_absensi,
+      official_id,
       form_config,
       status
     } = req.body;
@@ -282,18 +285,19 @@ export const updateEvent = async (req, res) => {
       final_template_source = 'template';
     }
 
-    // Update event with proper template tracking and certificate_layout
+    // Update event with proper template tracking, certificate_layout, and official_id
     await pool.query(
       `UPDATE events SET 
        nama_kegiatan = ?, nomor_surat = ?, tanggal_mulai = ?, tanggal_selesai = ?,
        jam_mulai = ?, jam_selesai = ?, batas_waktu_absensi = ?, template_sertifikat = ?,
-       certificate_layout = ?, template_id = ?, template_source = ?, form_config = ?, status = ?
+       certificate_layout = ?, template_id = ?, template_source = ?, form_config = ?, official_id = ?, status = ?
        WHERE id = ?`,
       [
         nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
         jam_mulai, jam_selesai, batas_waktu_absensi, template_path,
         certificate_layout ? JSON.stringify(certificate_layout) : null,
-        final_template_id, final_template_source, JSON.stringify(form_config || {}), status || existing[0].status, id
+        final_template_id, final_template_source, JSON.stringify(form_config || {}), 
+        official_id || null, status || existing[0].status, id
       ]
     );
 

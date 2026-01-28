@@ -242,4 +242,28 @@ export const certificateAPI = {
   validate: async (certificateNumber) => fetchPublic(`/certificates/validate/${certificateNumber}`),
 };
 
+export const officialsAPI = {
+  getAll: async () => fetchWithAuth("/officials"),
+  getActive: async () => fetchWithAuth("/officials/active"),
+  getById: async (id) => fetchWithAuth(`/officials/${id}`),
+  create: async (officialData) => {
+    const formData = new FormData();
+    formData.append("name", officialData.name);
+    formData.append("position", officialData.position);
+    if (officialData.is_active !== undefined) formData.append("is_active", officialData.is_active);
+    if (officialData.signature instanceof File) formData.append("signature", officialData.signature);
+    return fetchWithAuth("/officials", { method: "POST", body: formData });
+  },
+  update: async (id, officialData) => {
+    const formData = new FormData();
+    if (officialData.name) formData.append("name", officialData.name);
+    if (officialData.position) formData.append("position", officialData.position);
+    if (officialData.is_active !== undefined) formData.append("is_active", officialData.is_active);
+    if (officialData.signature instanceof File) formData.append("signature", officialData.signature);
+    return fetchWithAuth(`/officials/${id}`, { method: "PUT", body: formData });
+  },
+  delete: async (id) => fetchWithAuth(`/officials/${id}`, { method: "DELETE" }),
+};
+
+export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, certificate: certificateAPI, templates: templatesAPI, officials: officialsAPI };
 export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, kopSurat: kopSuratAPI, certificate: certificateAPI, templates: templatesAPI };

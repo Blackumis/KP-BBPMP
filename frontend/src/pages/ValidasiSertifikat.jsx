@@ -40,7 +40,7 @@ const ValidasiSertifikat = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
-      alert('Gagal mengunduh sertifikat: ' + err.message);
+      showNotification('Gagal mengunduh sertifikat: ' + err.message, 'error');
     } finally {
       setDownloading(false);
     }

@@ -9,8 +9,10 @@ import AttendancePage from "./pages/attendancePage";
 import AttendancelistPage from "./pages/attendancelistPage";
 import AdminPage from "./pages/adminPage";
 import ValidasiSertifikat from "./pages/ValidasiSertifikat";
+import OfficialVerification from "./pages/OfficialVerification";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { authAPI } from "./services/api";
+import { NotificationManager } from "./components/Notification";
 import "./index.css";
 
 export default function App() {
@@ -34,9 +36,14 @@ export default function App() {
   }, [location.pathname]);
 
   return (
-    <Routes>
+    <>
+      <NotificationManager />
+      <Routes>
       {/* Public route without MainLayout - Standalone validation page */}
       <Route path="/validasi/*" element={<ValidasiSertifikat />} />
+      
+      {/* Public route - Official Verification (QR Code) */}
+      <Route path="/official/:id" element={<OfficialVerification />} />
 
       {/* Public route - Login (with layout) */}
       <Route
@@ -147,5 +154,6 @@ export default function App() {
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    </>
   );
 }
