@@ -301,8 +301,6 @@ const ListEvents = () => {
                 </button>
               </div>
             </div>
-          )}
-        </>
       )}
     </div>
   );
