@@ -90,6 +90,16 @@ const ListEvents = () => {
 
   return (
     <div className="max-w-6xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
+      {/* Admin Navigation Tabs */}
+      <div className="flex gap-2 mb-6 border-b">
+        <Link to="/admin" className="px-4 py-2 border-b-2 border-blue-600 text-blue-600 font-semibold hover:bg-gray-50">
+          Kegiatan
+        </Link>
+        <Link to="/admin/kop-surat" className="px-4 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:text-blue-600 hover:bg-gray-50">
+          Kop Surat
+        </Link>
+      </div>
+
       <div className="flex justify-between items-center mb-6 border-b pb-4">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center">
           <span className="bg-blue-100 text-blue-700 py-1 px-3 rounded text-sm mr-3">Admin</span>
@@ -172,18 +182,26 @@ const ListEvents = () => {
                           <button
                             onClick={() => {
                               const shareUrl = `${window.location.origin}/attendance/${event.id}/${encodeURIComponent(event.nama_kegiatan)}`;
-                              navigator.clipboard.writeText(shareUrl).then(() => {
-                                alert("Link berhasil disalin ke clipboard!");
-                              }).catch(() => {
-                                // Fallback for older browsers
-                                prompt("Salin link berikut:", shareUrl);
-                              });
+                              navigator.clipboard
+                                .writeText(shareUrl)
+                                .then(() => {
+                                  alert("Link berhasil disalin ke clipboard!");
+                                })
+                                .catch(() => {
+                                  // Fallback for older browsers
+                                  prompt("Salin link berikut:", shareUrl);
+                                });
                             }}
                             className="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-full hover:bg-cyan-200"
                             title="Salin Link Absensi"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                              />
                             </svg>
                           </button>
                           <a
@@ -217,7 +235,12 @@ const ListEvents = () => {
                         title="Hapus Kegiatan"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -237,7 +260,7 @@ const ListEvents = () => {
           </div>
           <div className="flex gap-2 items-center">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Sebelumnya"
@@ -246,17 +269,17 @@ const ListEvents = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            {Array.from({ length: Math.ceil(events.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
+            {Array.from({ length: Math.ceil(events.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 text-sm font-medium rounded-md ${currentPage === page ? 'bg-blue-600 text-white' : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'}`}
+                className={`px-3 py-1 text-sm font-medium rounded-md ${currentPage === page ? "bg-blue-600 text-white" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"}`}
               >
                 {page}
               </button>
             ))}
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(events.length / itemsPerPage)))}
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(events.length / itemsPerPage)))}
               disabled={currentPage === Math.ceil(events.length / itemsPerPage)}
               className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Selanjutnya"
