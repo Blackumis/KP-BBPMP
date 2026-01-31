@@ -88,6 +88,36 @@ const kopSuratStorage = multer.diskStorage({
     cb(null, `kop-${unique}${ext}`);
   },
 });
+
+// Setup uploads dir for official signatures
+const uploadOfficialSignatureDir = path.join(__dirname, "../uploads/pejabat/signatures");
+if (!fs.existsSync(uploadOfficialSignatureDir)) {
+  fs.mkdirSync(uploadOfficialSignatureDir, { recursive: true });
+}
+const officialSignatureStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadOfficialSignatureDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, `official-signature-${unique}${ext}`);
+  },
+});
+const officialSignatureFileFilter = (req, file, cb) => {
+  const allowed = /jpeg|jpg|png/;
+  const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+  const mime = allowed.test(file.mimetype);
+  if (ext && mime) cb(null, true);
+  else cb(new Error("Only PNG/JPEG images allowed for official signatures"));
+};
+export const uploadOfficialSignature = multer({
+  storage: officialSignatureStorage,
+  limits: {
+    fileSize: parseInt(process.env.MAX_SIGNATURE_SIZE) || 2 * 1024 * 1024, // 2MB
+  },
+  fileFilter: officialSignatureFileFilter,
+});
 const kopSuratFileFilter = (req, file, cb) => {
   const allowed = /jpeg|jpg|png/;
   const ext = allowed.test(path.extname(file.originalname).toLowerCase());

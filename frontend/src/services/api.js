@@ -76,6 +76,9 @@ export const eventsAPI = {
     formData.append("batas_waktu_absensi", eventData.batas_waktu_absensi);
     formData.append("form_config", JSON.stringify(eventData.form_config || {}));
     formData.append("template_source", eventData.template_source || "upload");
+    if (eventData.official_id) {
+      formData.append("official_id", eventData.official_id);
+    }
     if (eventData.certificate_layout) {
       formData.append("certificate_layout", JSON.stringify(eventData.certificate_layout));
     }

@@ -241,10 +241,12 @@ const ValidasiSertifikat = () => {
                   {validationData?.participant?.nama_lengkap}
                 </p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">NIP</label>
-                <p className="text-lg text-gray-900">{validationData?.participant?.nip || '-'}</p>
-              </div>
+              {validationData?.participant?.nip && validationData?.participant?.nip !== '-' && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">NIP</label>
+                  <p className="text-lg text-gray-900">{validationData?.participant?.nip}</p>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-gray-500">Unit Kerja</label>
                 <p className="text-lg text-gray-900">{validationData?.participant?.unit_kerja}</p>
