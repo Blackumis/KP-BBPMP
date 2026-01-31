@@ -11,7 +11,7 @@ const Header = ({ user, onLogout, isAuthenticated }) => {
             {/* LEFT: Logo & Title */}
             <div className="flex items-center gap-4">
               <img
-                src="/Logo BBPMP JATENG.png"
+                src="/Logo_BBPMP_JATENG.png"
                 alt="BBPMP Jawa Tengah"
                 className="h-20 w-auto"
               />

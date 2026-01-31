@@ -35,7 +35,7 @@ const OfficialVerification = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+      <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex flex-col">
         {/* Header */}
         <div className="bg-white shadow-md border-b-4 border-yellow-500">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -54,7 +54,7 @@ const OfficialVerification = () => {
         </div>
 
         {/* Loading Content */}
-        <div className="flex-grow flex items-center justify-center">
+        <div className="grow flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Memuat data pejabat...</p>
@@ -75,7 +75,7 @@ const OfficialVerification = () => {
 
   if (error || !official) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+      <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex flex-col">
         {/* Header */}
         <div className="bg-white shadow-md border-b-4 border-yellow-500">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -94,7 +94,7 @@ const OfficialVerification = () => {
         </div>
 
         {/* Error Content */}
-        <div className="flex-grow flex items-center justify-center p-4">
+        <div className="grow flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
@@ -127,7 +127,7 @@ const OfficialVerification = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex flex-col">
       {/* Header */}
       <div className="bg-white shadow-md border-b-4 border-yellow-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -146,7 +146,7 @@ const OfficialVerification = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-grow py-12 px-4 sm:px-6 lg:px-8">
+      <div className="grow py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
@@ -161,7 +161,7 @@ const OfficialVerification = () => {
 
           {/* Official Info Card */}
           <div className="bg-white shadow-xl rounded-lg overflow-hidden mb-6">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4">
               <h2 className="text-xl font-bold text-white">Informasi Pejabat</h2>
             </div>
             <div className="px-6 py-6">
@@ -185,7 +185,7 @@ const OfficialVerification = () => {
                   <p className="text-sm text-gray-500">Tanda tangan digital yang terverifikasi</p>
                 </div>
                 
-                <div className="bg-white rounded-lg p-6 border border-gray-200 flex items-center justify-center min-h-[200px]">
+                <div className="bg-white rounded-lg p-6 border border-gray-200 flex items-center justify-center min-h-50">
                   {official.signature_image_path ? (
                     <img
                       src={`http://localhost:5000${official.signature_image_path}`}
@@ -216,7 +216,7 @@ const OfficialVerification = () => {
           <div className="bg-white shadow-xl rounded-lg overflow-hidden">
             <div className="px-6 py-4 border-l-4 border-blue-500">
               <div className="flex items-start gap-3">
-                <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p className="text-sm text-gray-700 leading-relaxed">

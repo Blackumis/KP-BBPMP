@@ -653,7 +653,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
 
         {/* Controls Panel */}
         <div className="space-y-4">
-          <div className="bg-white border border-gray-300 rounded-lg p-4 max-h-[600px] overflow-y-auto">
+          <div className="bg-white border border-gray-300 rounded-lg p-4 max-h-150 overflow-y-auto">
             <h4 className="font-bold text-gray-800 mb-3 flex items-center sticky top-0 bg-white pb-2">
               <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />

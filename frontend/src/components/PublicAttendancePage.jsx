@@ -14,7 +14,7 @@ const PublicAttendancePage = ({ eventId: propEventId }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex flex-col bg-linear-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <div className="bg-white shadow-md border-b-4 border-yellow-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -33,7 +33,7 @@ const PublicAttendancePage = ({ eventId: propEventId }) => {
       </div>
 
       {/* Content */}
-      <div className="flex-grow">
+      <div className="grow">
         <div className="max-w-4xl mx-auto w-full p-6">
           <div className="mb-4">
             <h2 className="text-xl font-bold text-gray-800">Form Absensi</h2>
