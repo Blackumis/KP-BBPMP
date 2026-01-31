@@ -6,7 +6,7 @@ const AttendancePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  return <PublicAttendancePage eventId={id} onReset={() => navigate("/")} />;
+  return <PublicAttendancePage eventId={id} />;
 };
 
 export default AttendancePage;

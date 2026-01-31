@@ -17,17 +17,13 @@ const PublicAttendancePage = ({ eventId: propEventId }) => {
     <div className="min-h-screen flex flex-col bg-linear-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <div className="bg-white shadow-md border-b-4 border-yellow-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2">
+          <div className="flex items-center gap-1">
             <img
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png"
+              src="/Logo_BBPMP_JATENG.png"
               alt="Kemendikdasmen"
-              className="h-12 w-auto"
+              className="h-20 w-auto"
             />
-            <div className="flex flex-col">
-              <h1 className="text-lg font-bold text-blue-800 uppercase leading-tight">Kemendikdasmen</h1>
-              <p className="text-xs font-semibold text-gray-700">BBPMP Provinsi Jawa Tengah</p>
-            </div>
           </div>
         </div>
       </div>
@@ -35,9 +31,6 @@ const PublicAttendancePage = ({ eventId: propEventId }) => {
       {/* Content */}
       <div className="grow">
         <div className="max-w-4xl mx-auto w-full p-6">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Form Absensi</h2>
-          </div>
           <AttendanceForm eventId={eventId} onReset={goHome} />
         </div>
       </div>

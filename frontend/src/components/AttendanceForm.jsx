@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { attendanceAPI, referenceAPI } from "../services/api";
 import { showNotification } from "./Notification";
 
-const AttendanceForm = ({ eventId, onReset }) => {
+const AttendanceForm = ({ eventId }) => {
   const [config, setConfig] = useState(null);
   const [isLoadingForm, setIsLoadingForm] = useState(true);
   const [formError, setFormError] = useState(null);
@@ -16,6 +16,9 @@ const AttendanceForm = ({ eventId, onReset }) => {
 
   const [provinceType, setProvinceType] = useState("Jawa Tengah");
   const [kabupatenList, setKabupatenList] = useState([]);
+
+  // Validation errors state
+  const [validationErrors, setValidationErrors] = useState({});
 
   const [formData, setFormData] = useState({
     nama_lengkap: "",
@@ -36,8 +39,7 @@ const AttendanceForm = ({ eventId, onReset }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
-  // Keep file reference when user uploads an image; drawn signatures will be converted to Blob on submit
-  const [signatureFile, setSignatureFile] = useState(null); // File | null
+  const [signatureFile, setSignatureFile] = useState(null);
 
   // Helper: convert canvas to Blob (PNG)
   const canvasToBlob = (canvas) =>
@@ -59,7 +61,6 @@ const AttendanceForm = ({ eventId, onReset }) => {
       const container = containerRef.current;
       if (!container) return;
 
-      // Save existing drawing if any
       const tempCanvas = document.createElement("canvas");
       const tempCtx = tempCanvas.getContext("2d");
       tempCanvas.width = canvas.width;
@@ -68,15 +69,12 @@ const AttendanceForm = ({ eventId, onReset }) => {
 
       const rect = container.getBoundingClientRect();
 
-      // Set canvas internal size
       canvas.width = rect.width;
       canvas.height = 200;
 
-      // Restore drawing
       const ctx = canvas.getContext("2d");
       ctx.drawImage(tempCanvas, 0, 0);
 
-      // Set drawing style
       ctx.strokeStyle = "#000";
       ctx.lineWidth = 2;
       ctx.lineCap = "round";
@@ -85,7 +83,6 @@ const AttendanceForm = ({ eventId, onReset }) => {
 
     resizeCanvas();
 
-    // Add small delay for resize to ensure container has proper size
     const timer = setTimeout(resizeCanvas, 100);
     window.addEventListener("resize", resizeCanvas);
 
@@ -99,7 +96,6 @@ const AttendanceForm = ({ eventId, onReset }) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
 
-    // Hitung rasio antara ukuran atribut internal dan ukuran tampilan CSS
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
@@ -145,9 +141,10 @@ const AttendanceForm = ({ eventId, onReset }) => {
     setIsDrawing(false);
     const canvas = canvasRef.current;
     if (canvas) {
-      // Do not create or store Base64. We will convert to Blob when submitting.
       setSignatureFile(null);
       setHasSignature(true);
+      // Clear signature validation error when user draws
+      setValidationErrors((prev) => ({ ...prev, signature: "" }));
     }
   };
 
@@ -175,15 +172,19 @@ const AttendanceForm = ({ eventId, onReset }) => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Keep the original file to send to backend; do NOT store Base64
         setSignatureFile(file);
         setHasSignature(true);
+        // Clear signature validation error when user uploads
+        setValidationErrors((prev) => ({ ...prev, signature: "" }));
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   };
-
+  // Validasi nomor telepon hanya angka
+  const validatePhoneNumber = (value) => {
+    return /^[0-9]*$/.test(value);
+  };
   useEffect(() => {
     const loadForm = async () => {
       try {
@@ -220,10 +221,32 @@ const AttendanceForm = ({ eventId, onReset }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    // Validasi khusus untuk nomor HP
+    if (name === "nomor_hp") {
+      if (!validatePhoneNumber(value)) {
+        return; // Jangan update state jika bukan angka
+      }
+    }
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+
+    // Clear validation error for this field when user types
+    if (validationErrors[name]) {
+      setValidationErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+
+    // Clear email mismatch error when user types in either email field
+    if ((name === "email" || name === "email_konfirmasi") && validationErrors.email_mismatch) {
+      setValidationErrors((prev) => ({ ...prev, email_mismatch: "" }));
+    }
+
+    // Clear pernyataan error when checked
+    if (name === "pernyataan" && checked) {
+      setValidationErrors((prev) => ({ ...prev, pernyataan: "" }));
+    }
 
     if (name === "provinsi") setProvinceType(value);
   };
@@ -236,6 +259,7 @@ const AttendanceForm = ({ eventId, onReset }) => {
       setAccessGranted(true);
       setPasswordError("");
     } else {
+      setPasswordError("Password yang Anda masukkan salah");
       showNotification("Password salah. Silakan coba lagi.", "error");
     }
   };
@@ -254,33 +278,88 @@ const AttendanceForm = ({ eventId, onReset }) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // Clear previous validation errors
+    const errors = {};
+    // Validasi required fields
+    if (config.requireName !== false && !formData.nama_lengkap.trim()) {
+      errors.nama_lengkap = "Nama lengkap wajib diisi";
+    }
+
+    if (config.requireUnit !== false && !formData.unit_kerja.trim()) {
+      errors.unit_kerja = "Unit kerja wajib diisi";
+    }
+    if (config.requirePangkat !== false && !formData.pangkat_golongan.trim()) {
+      errors.pangkat_golongan = "Pangkat/Golongan wajib diisi";
+    }
+    if (config.requireJabatan !== false && !formData.jabatan.trim()) {
+      errors.jabatan = "Jabatan wajib diisi";
+    }
+    if (config.requireNIP !== false && !formData.nip.trim()) {
+      errors.nip = "NIP wajib diisi";
+    }
+    if (config.requireDob !== false && !formData.tanggal_lahir) {
+      errors.tanggal_lahir = "Tanggal lahir wajib diisi";
+    }
+
+    if (config.requirePhone !== false && !formData.nomor_hp.trim()) {
+      errors.nomor_hp = "Nomor HP wajib diisi";
+    } else if (config.requirePhone !== false && formData.nomor_hp.length < 10) {
+      errors.nomor_hp = "Nomor HP minimal 10 digit";
+    } else if (config.requirePhone !== false && formData.nomor_hp.length > 15) {
+      errors.nomor_hp = "Nomor HP maksimal 15 digit";
+    }
+
+    if (config.requireEmail !== false && !formData.email.trim()) {
+      errors.email = "Email wajib diisi";
+    }
+
+    if (config.requireEmail !== false && !formData.email_konfirmasi.trim()) {
+      errors.email_konfirmasi = "Konfirmasi email wajib diisi";
+    }
+
+    if (config.requireProvince !== false && !formData.kabupaten_kota.trim()) {
+      errors.kabupaten_kota = "Kabupaten/Kota wajib diisi";
+    }
+    // Validate email match
     if (config.requireEmail !== false && formData.email !== formData.email_konfirmasi) {
-      showNotification("Email dan konfirmasi email tidak sama.", "error");
-      setIsSubmitting(false);
-      return;
+      errors.email_mismatch = "Email dan konfirmasi email tidak cocok";
+      errors.email = "Email tidak cocok";
+      errors.email_konfirmasi = "Email tidak cocok";
     }
-
+    // Validate pernyataan checkbox
     if (config.requirePernyataan !== false && !formData.pernyataan) {
-      showNotification("Anda harus menyetujui pernyataan untuk melanjutkan.", "warning");
-      setIsSubmitting(false);
-      return;
+      errors.pernyataan = "Anda harus menyetujui pernyataan untuk melanjutkan";
     }
-
+    // Validate signature
     if (config.requireSignature !== false && !hasSignature) {
-      showNotification("Silakan unggah atau gambar tanda tangan.", "warning");
+      errors.signature = "Tanda tangan diperlukan";
+    }
+    // If there are validation errors, show them and stop submission
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
       setIsSubmitting(false);
+
+      // Show the first error in notification
+      const firstError = Object.values(errors)[0];
+      showNotification(firstError, "error");
+
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      const element = document.querySelector(`[name="${firstErrorField}"]`) || document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
       return;
     }
 
     try {
-      // Build multipart form data
       const fd = new FormData();
       const fields = {
         ...formData,
         provinsi: formData.provinsi || provinceType,
       };
 
-      // Append text fields (exclude email_konfirmasi and any internal-only fields)
       Object.keys(fields).forEach((k) => {
         if (typeof fields[k] === "boolean") {
           fd.append(k, fields[k] ? "1" : "0");
@@ -289,7 +368,6 @@ const AttendanceForm = ({ eventId, onReset }) => {
         }
       });
 
-      // Signature file: if user uploaded an image, use it; otherwise convert canvas to Blob
       let fileToSend = signatureFile;
       if (!fileToSend) {
         const canvas = canvasRef.current;
@@ -342,9 +420,6 @@ const AttendanceForm = ({ eventId, onReset }) => {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Tidak Dapat Mengakses</h2>
           <p className="text-gray-600 mb-6">{formError}</p>
-          <button onClick={onReset} className="text-blue-600 hover:text-blue-800 font-medium">
-            Kembali
-          </button>
         </div>
       </div>
     );
@@ -368,19 +443,30 @@ const AttendanceForm = ({ eventId, onReset }) => {
               <input
                 type="text"
                 value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                className="w-full text-center tracking-widest px-4 py-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                onChange={(e) => {
+                  setPasswordInput(e.target.value);
+                  setPasswordError("");
+                }}
+                className={`w-full text-center tracking-widest px-4 py-3 border-2 rounded-lg focus:ring-2 focus:outline-none transition-all ${
+                  passwordError ? "border-red-500 focus:border-red-500 focus:ring-red-200 bg-red-50" : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+                }`}
                 placeholder="Masukkan Password"
                 autoFocus
               />
+              {passwordError && (
+                <div className="mt-2 flex items-start gap-2 text-red-600 text-sm animate-pulse">
+                  <svg className="w-4 h-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+
+                  <span className="text-start leading-snug">{passwordError}</span>
+                </div>
+              )}
             </div>
             <button type="submit" className="w-full bg-blue-700 text-white font-bold py-2 px-4 rounded hover:bg-blue-800 transition">
               Buka Absensi
             </button>
           </form>
-          <button onClick={onReset} className="mt-4 text-sm text-gray-500 hover:text-gray-800">
-            Kembali
-          </button>
         </div>
       </div>
     );
@@ -408,21 +494,11 @@ const AttendanceForm = ({ eventId, onReset }) => {
           </div>
         )}
         <p className="text-gray-500 text-sm mb-8">Sertifikat akan dikirimkan ke email terdaftar setelah kegiatan selesai.</p>
-        <button
-          onClick={() => {
-            setSubmitted(false);
-            onReset();
-          }}
-          className="bg-blue-800 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-900 transition"
-        >
-          Kembali ke Halaman Utama
-        </button>
       </div>
     );
   }
 
   return (
-    // Container: padding horizontal (px-4) ditambahkan agar tidak menempel di pinggir layar HP
     <div className="max-w-5xl mx-auto my-4 md:my-8 px-4 flex flex-col lg:flex-row gap-6 md:gap-8 items-start">
       {/* Left Column: Form & Activity Info */}
       <div className="flex-1 w-full order-2 lg:order-1">
@@ -434,19 +510,6 @@ const AttendanceForm = ({ eventId, onReset }) => {
             <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 leading-tight">{config.nama_kegiatan || "Nama Kegiatan"}</h1>
 
             <div className="flex flex-col sm:flex-row sm:flex-wrap text-sm text-gray-600 gap-y-3 gap-x-6 mt-4">
-              <div className="flex items-start sm:items-center">
-                <svg className="w-4 h-4 mr-2 text-blue-500 mt-0.5 sm:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  ></path>
-                </svg>
-                <span className="break-all">
-                  Surat No: <span className="font-semibold text-gray-800">{config.nomor_surat || "-"}</span>
-                </span>
-              </div>
               <div className="flex items-center">
                 <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -458,7 +521,7 @@ const AttendanceForm = ({ eventId, onReset }) => {
 
           <div className="p-5 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
-              {/* Input Fields - Menggunakan stack mobile, grid di desktop */}
+              {/* Input Fields */}
               <div className="grid grid-cols-1 gap-5">
                 {config.requireName !== false && (
                   <div className="group">
@@ -470,10 +533,19 @@ const AttendanceForm = ({ eventId, onReset }) => {
                       name="nama_lengkap"
                       value={formData.nama_lengkap}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all placeholder:text-gray-400 text-sm md:text-base"
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all placeholder:text-gray-400 text-sm md:text-base ${
+                        validationErrors.nama_lengkap ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                      }`}
                       placeholder="Sesuai gelar untuk sertifikat"
-                      required
                     />
+                    {validationErrors.nama_lengkap && (
+                      <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {validationErrors.nama_lengkap}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -487,27 +559,101 @@ const AttendanceForm = ({ eventId, onReset }) => {
                       name="unit_kerja"
                       value={formData.unit_kerja}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm md:text-base"
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm md:text-base ${
+                        validationErrors.unit_kerja ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                      }`}
                       placeholder="Nama Sekolah / Dinas / Lembaga"
-                      required
                     />
+                    {validationErrors.unit_kerja && (
+                      <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {validationErrors.unit_kerja}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
+              {/* Grid 2 Kolom di Tablet/Desktop, 1 Kolom di HP */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {config.requirePangkat !== false && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Pangkat / Golongan <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="pangkat_golongan"
+                      value={formData.pangkat_golongan}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base ${
+                        validationErrors.pangkat_golongan ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                      }`}
+                      placeholder="Contoh: Penata Muda / III/a"
+                    />
+                    {validationErrors.pangkat_golongan && (
+                      <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {validationErrors.pangkat_golongan}
+                      </p>
+                    )}
+                  </div>
+                )}
 
+                {config.requireJabatan !== false && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Jabatan <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="jabatan"
+                      value={formData.jabatan}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base ${
+                        validationErrors.jabatan ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                      }`}
+                      placeholder="Contoh: Guru / Kepala Sekolah / Staff"
+                    />
+                    {validationErrors.jabatan && (
+                      <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {validationErrors.jabatan}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
               {/* Grid 2 Kolom di Tablet/Desktop, 1 Kolom di HP */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {config.requireNIP && (
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">NIP</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      NIP <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       name="nip"
                       value={formData.nip}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base"
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base ${
+                        validationErrors.nip ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                      }`}
                       placeholder="Nomor Induk Pegawai"
                     />
+                    {validationErrors.nip && (
+                      <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {validationErrors.nip}
+                      </p>
+                    )}
                   </div>
                 )}
                 {config.requireDob !== false && (
@@ -520,9 +666,18 @@ const AttendanceForm = ({ eventId, onReset }) => {
                       name="tanggal_lahir"
                       value={formData.tanggal_lahir}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base"
-                      required
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base ${
+                        validationErrors.tanggal_lahir ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                      }`}
                     />
+                    {validationErrors.tanggal_lahir && (
+                      <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {validationErrors.tanggal_lahir}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -538,15 +693,24 @@ const AttendanceForm = ({ eventId, onReset }) => {
                     name="nomor_hp"
                     value={formData.nomor_hp}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base"
-                    placeholder="08..."
-                    required
+                    className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base ${
+                      validationErrors.nomor_hp ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                    }`}
+                    placeholder="08xxxxxxxxxx"
                   />
+                  {validationErrors.nomor_hp && (
+                    <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                      <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {validationErrors.nomor_hp}
+                    </p>
+                  )}
                 </div>
               )}
               {config.requireEmail !== false && (
-                <div>
-                  <div className="md:col-span-1">
+                <div className="space-y-5">
+                  <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
                       Email <span className="text-red-500">*</span>
                     </label>
@@ -555,11 +719,20 @@ const AttendanceForm = ({ eventId, onReset }) => {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base"
-                      required
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base ${
+                        validationErrors.email ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                      }`}
                     />
+                    {validationErrors.email && !validationErrors.email_mismatch && (
+                      <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {validationErrors.email}
+                      </p>
+                    )}
                   </div>
-                  <div className="md:col-span-1">
+                  <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
                       Konfirmasi Email <span className="text-red-500">*</span>
                     </label>
@@ -568,14 +741,33 @@ const AttendanceForm = ({ eventId, onReset }) => {
                       name="email_konfirmasi"
                       value={formData.email_konfirmasi}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
-                      required
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all ${
+                        validationErrors.email_konfirmasi ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                      }`}
                     />
+                    {validationErrors.email_konfirmasi && !validationErrors.email_mismatch && (
+                      <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {validationErrors.email_konfirmasi}
+                      </p>
+                    )}
                   </div>
+                  {validationErrors.email_mismatch && (
+                    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg animate-pulse">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-red-500 mr-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <p className="text-sm font-medium text-red-800">{validationErrors.email_mismatch}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Province Selector - Responsive Radio Buttons */}
+              {/* Province Selector */}
               {config.requireProvince !== false && (
                 <div className="bg-blue-50/50 p-4 md:p-6 rounded-xl border border-blue-100">
                   <label className="block text-sm font-bold text-blue-900 mb-3">
@@ -628,8 +820,9 @@ const AttendanceForm = ({ eventId, onReset }) => {
                           name="kabupaten_kota"
                           value={formData.kabupaten_kota}
                           onChange={handleChange}
-                          className="w-full appearance-none px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none bg-white text-sm md:text-base"
-                          required
+                          className={`w-full appearance-none px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none bg-white text-sm md:text-base ${
+                            validationErrors.kabupaten_kota ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                          }`}
                         >
                           <option value="">-- Pilih Kabupaten / Kota --</option>
                           {kabupatenList.map((kab) => (
@@ -643,30 +836,52 @@ const AttendanceForm = ({ eventId, onReset }) => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                           </svg>
                         </div>
+                        {validationErrors.kabupaten_kota && (
+                          <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            {validationErrors.kabupaten_kota}
+                          </p>
+                        )}
                       </div>
                     ) : (
-                      <input
-                        type="text"
-                        name="kabupaten_kota"
-                        value={formData.kabupaten_kota}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base"
-                        placeholder="Tuliskan nama provinsi & kota..."
-                        required
-                      />
+                      <>
+                        <input
+                          type="text"
+                          name="kabupaten_kota"
+                          value={formData.kabupaten_kota}
+                          onChange={handleChange}
+                          className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base ${
+                            validationErrors.kabupaten_kota ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                          }`}
+                          placeholder="Tuliskan nama provinsi & kota..."
+                        />
+                        {validationErrors.kabupaten_kota && (
+                          <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            {validationErrors.kabupaten_kota}
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* e-Signature - Responsive Canvas */}
+              {/* e-Signature */}
               {config.requireSignature !== false && (
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">
                     e-Signature / TTD Elektronik <span className="text-red-500">*</span>
                   </label>
-                  <div className="border-2 border-gray-200 rounded-lg p-3 md:p-4 bg-gray-50">
-                    <div ref={containerRef} className="bg-white rounded-lg overflow-hidden mb-3 border-2 border-dashed border-gray-300 aspect-3/1 min-h-150px">
+                  <div className={`border-2 rounded-lg p-3 md:p-4 transition-all ${validationErrors.signature ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"}`}>
+                    <div
+                      ref={containerRef}
+                      className={`bg-white rounded-lg overflow-hidden mb-3 border-2 border-dashed min-h-150px ${validationErrors.signature ? "border-red-300" : "border-gray-300"}`}
+                    >
                       <canvas
                         ref={canvasRef}
                         className="w-full h-full cursor-crosshair touch-none"
@@ -679,6 +894,14 @@ const AttendanceForm = ({ eventId, onReset }) => {
                         onTouchEnd={stopDrawing}
                       />
                     </div>
+                    {validationErrors.signature && (
+                      <div className="mb-3 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>{validationErrors.signature}</span>
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -706,34 +929,59 @@ const AttendanceForm = ({ eventId, onReset }) => {
 
               {/* Checkbox Pernyataan */}
               {config.requirePernyataan !== false && (
-                <div className="flex items-start bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                  <input
+                <div className="mt-4">
+                  <div
                     id="pernyataan"
-                    type="checkbox"
-                    name="pernyataan"
-                    checked={formData.pernyataan}
-                    onChange={handleChange}
-                    className="h-5 w-5 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
-                    required
-                  />
-                  <label htmlFor="pernyataan" className="ml-3 text-xs md:text-sm text-gray-700 leading-relaxed">
-                    Menyetujui bahwa seluruh data yang tertera sesuai dengan identitas asli dan penulisan dalam standar penulisan <strong>EYD v5</strong> <span className="text-red-500">*</span>
-                  </label>
+                    className={`flex items-start p-4 rounded-lg border-2 transition-all ${validationErrors.pernyataan ? "bg-red-50 border-red-500" : "bg-yellow-50 border-yellow-200"}`}
+                  >
+                    <input
+                      id="pernyataan-checkbox"
+                      type="checkbox"
+                      name="pernyataan"
+                      checked={formData.pernyataan}
+                      onChange={handleChange}
+                      className={`h-5 w-5 mt-0.5 rounded border-2 focus:ring-2 focus:ring-offset-0 transition-all ${
+                        validationErrors.pernyataan ? "border-red-500 text-red-600 focus:ring-red-200" : "border-gray-300 text-blue-600 focus:ring-blue-200"
+                      }`}
+                    />
+                    <div className="ml-3 flex-1">
+                      <label htmlFor="pernyataan-checkbox" className="text-xs md:text-sm text-gray-700 leading-relaxed cursor-pointer">
+                        Menyetujui bahwa seluruh data yang tertera sesuai dengan identitas asli dan penulisan dalam standar penulisan <strong>EYD v5</strong> <span className="text-red-500">*</span>
+                      </label>
+                    </div>
+                  </div>
+                  {validationErrors.pernyataan && (
+                    <p className="flex mt-2 items-center gap-2 text-red-600 text-sm animate-pulse">
+                      <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <span>{validationErrors.pernyataan}</span>
+                    </p>
+                  )}
                 </div>
               )}
-
               {/* Submit Button */}
               <div className="pt-4">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold text-base md:text-lg py-4 rounded-xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center disabled:opacity-50"
+                  className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold text-base md:text-lg py-4 rounded-xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? "Mengirim..." : "Kirim Kehadiran"}
-                  {!isSubmitting && (
-                    <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                    </svg>
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Mengirim...
+                    </>
+                  ) : (
+                    <>
+                      Kirim Kehadiran
+                      <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                      </svg>
+                    </>
                   )}
                 </button>
               </div>

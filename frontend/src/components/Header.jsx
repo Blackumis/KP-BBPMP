@@ -57,35 +57,6 @@ const Header = ({ user, onLogout, isAuthenticated }) => {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200">
             <div className="px-4 pt-2 pb-4 space-y-3">
-              {/* Mobile Navigation Links */}
-              {!isAuthenticated ? (
-                <>
-                  <Link
-                    to="/daftarkegiatan"
-                    className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Daftar Kegiatan
-                  </Link>
-                  <Link to="/login" className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition" onClick={() => setMobileMenuOpen(false)}>
-                    Login Admin
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link to="/admin" className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition" onClick={() => setMobileMenuOpen(false)}>
-                    Dashboard
-                  </Link>
-                  <Link
-                    to="/attendances"
-                    className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Daftar Hadir
-                  </Link>
-                </>
-              )}
-
               {/* Mobile User Info */}
               {isAuthenticated && user && (
                 <div className="border-t border-gray-200 pt-3 mt-3">
