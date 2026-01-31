@@ -62,10 +62,10 @@ const Notification = ({ message, type = 'info', duration = 2000, onClose }) => {
       }}
     >
       <div
-        className={`${style.bg} ${style.border} border-2 rounded-xl shadow-2xl p-4 pr-12 min-w-[300px] max-w-md relative backdrop-blur-sm`}
+        className={`${style.bg} ${style.border} border-2 rounded-xl shadow-2xl p-4 pr-12 min-w-75 max-w-md relative backdrop-blur-sm`}
       >
         <div className="flex items-start gap-3">
-          <div className={`flex-shrink-0 ${style.icon}`}>
+          <div className={`shrink-0 ${style.icon}`}>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={style.iconPath} />
             </svg>
@@ -90,7 +90,7 @@ const Notification = ({ message, type = 'info', duration = 2000, onClose }) => {
         </button>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes slideIn {
           from {
             transform: translateX(400px);
