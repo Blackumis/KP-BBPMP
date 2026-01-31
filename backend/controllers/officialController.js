@@ -105,11 +105,11 @@ export const createOfficial = async (req, res) => {
     let signature_qr_path = null;
 
     if (req.file) {
-      signature_image_path = `/uploads/signatures/${req.file.filename}`;
+      signature_image_path = `/uploads/pejabat/signatures/${req.file.filename}`;
 
       // Generate QR code that links to official verification page
       const qrFileName = `qr_${Date.now()}.png`;
-      const qrPath = path.join(__dirname, "../uploads/signatures", qrFileName);
+      const qrPath = path.join(__dirname, "../uploads/pejabat/qrcode", qrFileName);
 
       // Create QR code containing URL to official verification page
       const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/official/OFFICIAL_ID_PLACEHOLDER`;
@@ -119,7 +119,7 @@ export const createOfficial = async (req, res) => {
         errorCorrectionLevel: "H",
       });
 
-      signature_qr_path = `/uploads/signatures/${qrFileName}`;
+      signature_qr_path = `/uploads/pejabat/qrcode/${qrFileName}`;
     }
 
     const [result] = await db.query(
@@ -193,11 +193,11 @@ export const updateOfficial = async (req, res) => {
       }
 
       // Save new signature image
-      signature_image_path = `/uploads/signatures/${req.file.filename}`;
+      signature_image_path = `/uploads/pejabat/signatures/${req.file.filename}`;
 
       // Generate new QR code with URL to verification page
       const qrFileName = `qr_${Date.now()}.png`;
-      const qrPath = path.join(__dirname, "../uploads/signatures", qrFileName);
+      const qrPath = path.join(__dirname, "../uploads/pejabat/qrcode", qrFileName);
 
       const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/official/${id}`;
       await QRCode.toFile(qrPath, verificationUrl, {
@@ -206,7 +206,7 @@ export const updateOfficial = async (req, res) => {
         errorCorrectionLevel: "H",
       });
 
-      signature_qr_path = `/uploads/signatures/${qrFileName}`;
+      signature_qr_path = `/uploads/pejabat/qrcode/${qrFileName}`;
     }
 
     await db.query(

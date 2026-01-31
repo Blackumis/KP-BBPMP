@@ -16,9 +16,19 @@ export const createEvent = async (req, res) => {
       jam_mulai,
       jam_selesai,
       batas_waktu_absensi,
-      official_id,
-      form_config
+      official_id
     } = req.body;
+    
+    // Parse form_config - it comes as JSON string from FormData
+    let form_config = req.body.form_config;
+    if (form_config && typeof form_config === 'string') {
+      try {
+        form_config = JSON.parse(form_config);
+      } catch (err) {
+        console.warn('Failed to parse form_config:', err);
+        form_config = {};
+      }
+    }
     
     // Parse certificate_layout - it comes as JSON string from FormData
     let certificate_layout = req.body.certificate_layout;
@@ -39,7 +49,9 @@ export const createEvent = async (req, res) => {
       tanggal_selesai,
       jam_mulai,
       jam_selesai,
-      batas_waktu_absensi
+      batas_waktu_absensi,
+      official_id,
+      form_config
     });
 
     // Validation - check for empty strings and null/undefined
@@ -191,9 +203,11 @@ export const getEventById = async (req, res) => {
 
     const [events] = await pool.query(
       `SELECT e.*, a.full_name as created_by_name,
+              o.name as official_name, o.position as official_position,
               (SELECT COUNT(*) FROM presensi WHERE event_id = e.id) as total_attendances
        FROM kegiatan e
        LEFT JOIN admin a ON e.created_by = a.id
+       LEFT JOIN pejabat o ON e.official_id = o.id
        WHERE e.id = ?`,
       [id]
     );
@@ -232,9 +246,19 @@ export const updateEvent = async (req, res) => {
       jam_selesai,
       batas_waktu_absensi,
       official_id,
-      form_config,
       status
     } = req.body;
+    
+    // Parse form_config - it comes as JSON string from FormData
+    let form_config = req.body.form_config;
+    if (form_config && typeof form_config === 'string') {
+      try {
+        form_config = JSON.parse(form_config);
+      } catch (err) {
+        console.warn('Failed to parse form_config:', err);
+        form_config = {};
+      }
+    }
     
     // Parse certificate_layout - it comes as JSON string from FormData
     let certificate_layout = req.body.certificate_layout;

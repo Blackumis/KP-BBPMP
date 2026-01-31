@@ -91,23 +91,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
       });
     }
 
-    if (formConfig?.requireNIP === true) {
-      defaultFields.push({
-        id: "nip",
-        label: "NIP",
-        type: "dynamic",
-        field: "nip",
-        x: 15,
-        y: 85,
-        width: 25,
-        height: 4,
-        fontSize: 10,
-        fontWeight: "normal",
-        fontFamily: "Times-Roman",
-        textAlign: "left",
-        wordWrap: false,
-      });
-    }
+    // NIP field removed - tidak ditampilkan di certificate editor
 
     if (formConfig?.requireRank === true) {
       defaultFields.push({
@@ -232,7 +216,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
       label: "QR TTD Atasan",
       type: "qr",
       field: "signature_authority",
-      x: 5,
+      x: 13,
       y: 85,
       width: 10,
       height: 10,
@@ -264,6 +248,21 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
       setFields(newFields);
     }
   }, []);
+
+  // Update fields when formConfig changes (untuk filter field yang tidak diperlukan)
+  useEffect(() => {
+    if (!initialLayout || initialLayout.length === 0) {
+      // Only regenerate if we're not using saved layout
+      setFields(prevFields => {
+        // Keep custom text fields
+        const customFields = prevFields.filter(f => f.id.startsWith('custom_text_'));
+        // Regenerate default fields based on new formConfig
+        const newDefaultFields = generateDefaultFields();
+        // Merge: default fields + existing custom fields
+        return [...newDefaultFields, ...customFields];
+      });
+    }
+  }, [formConfig?.requireUnit, formConfig?.requireCity, formConfig?.requireNIP, formConfig?.requireRank, formConfig?.requirePosition]);
 
   // Notify parent of layout changes
   useEffect(() => {
@@ -672,17 +671,10 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                   </p>
                   <button
                     type="button"
-                    onClick={() => setSelectedFields([])}
-                    className="w-full px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition mb-2"
-                  >
-                    Batalkan Pilihan
-                  </button>
-                  <button
-                    type="button"
                     onClick={deleteSelectedFields}
                     className="w-full px-3 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition"
                   >
-                    Hapus Field Kustom Terpilih
+                    Hapus
                   </button>
                 </div>
               </div>

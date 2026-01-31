@@ -135,8 +135,15 @@ export const submitAttendance = async (req, res) => {
     const [countResult] = await pool.query("SELECT COUNT(*) as count FROM presensi WHERE event_id = ?", [event_id]);
     const urutan_absensi = countResult[0].count + 1;
 
-    // Generate certificate number format: urutan/nomor_surat
-    const nomor_sertifikat = `${urutan_absensi}/${events[0].nomor_surat}`;
+    // Generate certificate number format: urutan/nomor_surat with 4-digit padding (0001, 0002, etc.)
+    const paddedUrutan = String(urutan_absensi).padStart(4, '0');
+    const nomor_sertifikat = `${paddedUrutan}/${events[0].nomor_surat}`;
+
+    // Sanitize optional fields - convert empty strings or "-" to null
+    const sanitizedNIP = nip && nip.trim() !== '' && nip.trim() !== '-' ? nip.trim() : null;
+    const sanitizedPangkat = pangkat_golongan && pangkat_golongan.trim() !== '' && pangkat_golongan.trim() !== '-' ? pangkat_golongan.trim() : null;
+    const sanitizedJabatan = jabatan && jabatan.trim() !== '' && jabatan.trim() !== '-' ? jabatan.trim() : null;
+    const sanitizedTanggalLahir = tanggal_lahir && tanggal_lahir.trim() !== '' ? tanggal_lahir : null;
 
     // Insert attendance
     const [result] = await pool.query(
@@ -144,7 +151,7 @@ export const submitAttendance = async (req, res) => {
        (event_id, nama_lengkap, unit_kerja, nip, provinsi, kabupaten_kota, tanggal_lahir,
         nomor_hp, pangkat_golongan, jabatan, email, signature_url, urutan_absensi, nomor_sertifikat)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [event_id, nama_lengkap, unit_kerja, nip, provinsi, kabupaten_kota, tanggal_lahir, nomor_hp, pangkat_golongan, jabatan, email, signature_url, urutan_absensi, nomor_sertifikat]
+      [event_id, nama_lengkap, unit_kerja, sanitizedNIP, provinsi, kabupaten_kota, sanitizedTanggalLahir, nomor_hp, sanitizedPangkat, sanitizedJabatan, email, signature_url, urutan_absensi, nomor_sertifikat]
     );
 
     res.status(201).json({
