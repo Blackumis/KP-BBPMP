@@ -690,10 +690,9 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
         {activeStep === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-              <h3 className="text-md font-bold text-blue-800">Pengaturan Keamanan</h3>
-              <p className="text-sm text-blue-700 mt-1">Anda dapat menambahkan password untuk membatasi akses ke formulir absensi ini. Jika dikosongkan, formulir dapat diakses oleh siapa saja.</p>
-              <div className="mt-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Password Absensi (Opsional)</label>
+              <h3 className="text-md font-bold text-blue-800">Penambahan Password</h3>
+              <label>Password</label>
+              <div className="mt-1">
                 <input
                   type="text"
                   name="eventPassword"
