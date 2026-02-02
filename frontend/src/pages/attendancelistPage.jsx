@@ -32,7 +32,7 @@ const AttendancelistPage = () => {
   if (!event) return <div className="max-w-6xl mx-auto p-8 text-center">Kegiatan tidak ditemukan.</div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto p-6">
       <AttendanceList event={event} onBack={() => navigate("/admin")} />
     </div>
   );
