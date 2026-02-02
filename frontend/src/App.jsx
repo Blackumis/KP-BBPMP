@@ -10,6 +10,7 @@ import AttendancelistPage from "./pages/attendancelistPage";
 import AdminPage from "./pages/adminPage";
 import ValidasiSertifikat from "./pages/ValidasiSertifikat";
 import OfficialVerification from "./pages/OfficialVerification";
+import NotFoundPage from "./pages/NotFoundPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { authAPI } from "./services/api";
 import { NotificationManager } from "./components/Notification";
@@ -137,8 +138,8 @@ export default function App() {
         }
       />
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Catch-all - 404 Not Found */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
   );

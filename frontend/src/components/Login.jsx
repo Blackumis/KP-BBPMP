@@ -11,6 +11,13 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
     setIsLoading(true);
 
+    // Validasi field kosong
+    if (!username.trim() || !password.trim()) {
+      showNotification("Username dan password harus diisi", "error");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await authAPI.login(username, password);
       if (response.success) {
@@ -40,7 +47,6 @@ const Login = ({ onLogin }) => {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Masukkan username"
-              required
               disabled={isLoading}
             />
           </div>
@@ -56,7 +62,6 @@ const Login = ({ onLogin }) => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Masukkan password"
-              required
               disabled={isLoading}
             />
           </div>
@@ -79,9 +84,6 @@ const Login = ({ onLogin }) => {
             )}
           </button>
         </form>
-        <div className="mt-4 text-center text-xs text-gray-500">
-          <p>Gunakan akun admin yang telah didaftarkan</p>
-        </div>
       </div>
     </div>
   );

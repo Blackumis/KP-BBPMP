@@ -90,6 +90,13 @@ const OfficialsManagement = () => {
     setLoading(true);
 
     try {
+      // Validation: signature is required when creating new official
+      if (!editingOfficial && !formData.signature) {
+        showNotification("Tanda tangan digital wajib diupload", "error");
+        setLoading(false);
+        return;
+      }
+
       if (editingOfficial) {
         await officialsAPI.update(editingOfficial.id, formData);
         showNotification("Pejabat berhasil diperbarui", "success");
@@ -300,8 +307,7 @@ const OfficialsManagement = () => {
               {/* Signature Upload */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tanda Tangan Digital{" "}
-                  <span className="text-gray-400 text-xs">(Opsional)</span>
+                  Tanda Tangan Digital <span className="text-red-500">*</span>
                 </label>
                 
                 {previewImage ? (

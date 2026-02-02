@@ -306,23 +306,9 @@ const ValidasiSertifikat = () => {
                 <label className="text-sm font-medium text-gray-500">Nomor Surat</label>
                 <p className="text-lg text-gray-900">{validationData?.event?.nomor_surat}</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Tanggal Mulai</label>
-                  <p className="text-lg text-gray-900">{validationData?.event?.tanggal_mulai}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Tanggal Selesai</label>
-                  <p className="text-lg text-gray-900">{validationData?.event?.tanggal_selesai}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Jam Mulai</label>
-                  <p className="text-lg text-gray-900">{validationData?.event?.jam_mulai}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Jam Selesai</label>
-                  <p className="text-lg text-gray-900">{validationData?.event?.jam_selesai}</p>
-                </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Tanggal Mulai</label>
+                <p className="text-lg text-gray-900">{validationData?.event?.tanggal_mulai}</p>
               </div>
             </div>
           </div>
@@ -332,9 +318,6 @@ const ValidasiSertifikat = () => {
         <div className="mt-8 text-center pb-4">
           <p className="text-sm text-gray-600">
             Halaman ini memverifikasi keaslian sertifikat yang diterbitkan oleh sistem KP BBPMP.
-          </p>
-          <p className="text-sm text-gray-600 mt-2">
-            Untuk informasi lebih lanjut, hubungi administrator sistem.
           </p>
         </div>
         </div>

@@ -487,8 +487,6 @@ const AttendanceForm = ({ eventId }) => {
         {submitResult && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-blue-800">
-              <strong>Nomor Urut:</strong> {submitResult.urutan_absensi}
-              <br />
               <strong>No. Sertifikat:</strong> {submitResult.nomor_sertifikat}
             </p>
           </div>
@@ -1009,8 +1007,7 @@ const AttendanceForm = ({ eventId }) => {
                   month: "short",
                   hour: "2-digit",
                   minute: "2-digit",
-                })}{" "}
-                WIB
+                }).replace(/\./g, ":")} WIB
               </span>
             </div>
           </div>

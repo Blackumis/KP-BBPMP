@@ -1,4 +1,5 @@
 import Login from "../components/Login";
+import SplashScreen from "../components/SplashScreen";
 import React from "react";
 import "../index.css";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -7,6 +8,11 @@ import { authAPI } from "../services/api";
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [showSplash, setShowSplash] = React.useState(true);
+  
+  // Check if splash has been seen this session for faster duration
+  const hasSeenSplash = sessionStorage.getItem('loginSplashSeen');
+  const splashDuration = hasSeenSplash ? 800 : 2000;
 
   // If user is already logged in, send them to /admin
   React.useEffect(() => {
@@ -21,6 +27,15 @@ const LoginPage = () => {
     const from = state.from?.pathname || "/admin";
     navigate(from, { replace: true });
   };
+
+  const handleSplashFinish = () => {
+    sessionStorage.setItem('loginSplashSeen', 'true');
+    setShowSplash(false);
+  };
+
+  if (showSplash) {
+    return <SplashScreen onFinish={handleSplashFinish} duration={splashDuration} />;
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6">
