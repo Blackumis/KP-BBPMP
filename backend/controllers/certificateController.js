@@ -223,7 +223,7 @@ export const sendCertificate = async (req, res) => {
     if (!attendance.certificate_path) {
       return res.status(400).json({
         success: false,
-        message: 'Certificate not generated yet'
+        message: 'sertifikat belum dibuat'
       });
     }
 

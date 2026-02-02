@@ -231,7 +231,7 @@ const ListEvents = () => {
                                 navigator.clipboard
                                   .writeText(shareUrl)
                                   .then(() => {
-                                    alert("Link berhasil disalin ke clipboard!");
+                                    showNotification("Link berhasil disalin ke clipboard!", "success");
                                   })
                                   .catch(() => {
                                     // Fallback for older browsers
