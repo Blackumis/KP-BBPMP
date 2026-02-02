@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { kopSuratAPI } from "../../services/api";
 import { showNotification } from "../../components/Notification";
@@ -8,12 +8,13 @@ const EditKopSurat = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef(null);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     nama_data: "",
     periode_mulai: "",
     periode_selesai: "",
-    jenis_ttd: "QR",
+    jenis_ttd: null,
     kop_url: null,
     kop_image: null,
     kop_image_preview: null,
@@ -29,7 +30,6 @@ const EditKopSurat = () => {
             nama_data: data.nama_data || "",
             periode_mulai: data.periode_mulai ? data.periode_mulai.split("T")[0] : "",
             periode_selesai: data.periode_selesai ? data.periode_selesai.split("T")[0] : "",
-            jenis_ttd: data.jenis_ttd || "QR",
             kop_url: data.kop_url,
             kop_image: null,
             kop_image_preview: null,
@@ -58,14 +58,20 @@ const EditKopSurat = () => {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith("image/")) {
         setError("Harap pilih file gambar yang valid");
+        // Reset input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
         return;
       }
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError("Ukuran gambar tidak boleh lebih dari 5MB");
+        // Reset input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
         return;
       }
 
@@ -112,7 +118,6 @@ const EditKopSurat = () => {
         nama_data: formData.nama_data,
         periode_mulai: formData.periode_mulai,
         periode_selesai: formData.periode_selesai,
-        jenis_ttd: formData.jenis_ttd,
       };
 
       if (formData.kop_image) {
@@ -131,6 +136,19 @@ const EditKopSurat = () => {
       console.error(err);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Handler untuk hapus gambar baru
+  const handleRemoveNewImage = () => {
+    setFormData({
+      ...formData,
+      kop_image: null,
+      kop_image_preview: null,
+    });
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -206,72 +224,61 @@ const EditKopSurat = () => {
         {/* Gambar Kop Surat */}
         <div className="mb-6">
           <label className="block text-sm font-semibold text-gray-700 mb-2">Gambar Kop Surat</label>
+
+          {/* Hidden File Input - SELALU ADA */}
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition">
             {formData.kop_image_preview ? (
+              // Preview gambar baru yang dipilih
               <div className="space-y-4">
                 <img src={formData.kop_image_preview} alt="Kop preview" className="max-h-64 mx-auto rounded" />
                 <p className="text-sm text-gray-600">{formData.kop_image?.name}</p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      kop_image: null,
-                      kop_image_preview: null,
-                    })
-                  }
-                  className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition"
-                >
-                  Hapus
-                </button>
+                <div className="flex gap-3 justify-center">
+                  <button type="button" onClick={handleRemoveNewImage} className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition font-medium">
+                    Hapus
+                  </button>
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition font-medium">
+                    Ganti Gambar
+                  </button>
+                </div>
               </div>
             ) : formData.kop_url ? (
+              // Tampilkan gambar yang sudah ada
               <div className="space-y-4">
-                <img src={`http://localhost:5000/${formData.kop_url}`} alt="Current kop" className="max-h-64 mx-auto rounded" />
+                <img src={`http://localhost:5000/${formData.kop_url}`} alt="Current kop" className="max-h-64 mx-auto rounded border border-gray-200" />
                 <p className="text-sm text-gray-600">Gambar saat ini</p>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
-                  onClick={() => {
-                    const input = document.querySelector('input[type="file"]');
-                    input?.click();
-                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition font-medium inline-flex items-center gap-2"
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
                   Ganti Gambar
                 </button>
               </div>
             ) : (
+              // Tidak ada gambar - upload baru
               <div>
                 <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                   <path d="M28 8H12a4 4 0 00-4 4v20a4 4 0 004 4h24a4 4 0 004-4V20m-8-12l-3-3m0 0l-3-3m3 3v10m3-7h3m0 0h3m-3 0v5" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <p className="mt-2 text-sm text-gray-600">
                   Seret dan lepas gambar kop surat di sini, atau{" "}
-                  <label className="text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="text-blue-600 hover:text-blue-800 font-medium underline">
                     klik untuk memilih
-                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                  </label>
+                  </button>
                 </p>
                 <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF hingga 5MB</p>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Jenis TTD */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Jenis Tanda Tangan <span className="text-red-500">*</span>
-          </label>
-          <div className="flex gap-4">
-            <label className="flex items-center">
-              <input type="radio" name="jenis_ttd" value="QR" checked={formData.jenis_ttd === "QR"} onChange={handleInputChange} className="w-4 h-4 text-blue-600" />
-              <span className="ml-2 text-sm text-gray-700">QR Code</span>
-            </label>
-            <label className="flex items-center">
-              <input type="radio" name="jenis_ttd" value="BASAH" checked={formData.jenis_ttd === "BASAH"} onChange={handleInputChange} className="w-4 h-4 text-blue-600" />
-              <span className="ml-2 text-sm text-gray-700">Tanda Tangan Basah</span>
-            </label>
           </div>
         </div>
 

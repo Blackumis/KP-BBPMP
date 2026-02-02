@@ -13,7 +13,7 @@ const toTinyInt = (val, defaultValue = 1) => {
 // Create new kop surat
 export const createKopSurat = async (req, res) => {
   try {
-    const { nama_data, periode_mulai, periode_selesai, jenis_ttd, is_active } = req.body;
+    const { nama_data, periode_mulai, periode_selesai, is_active } = req.body;
 
     // Validation
     if (!nama_data || !periode_mulai || !periode_selesai) {
@@ -50,8 +50,8 @@ export const createKopSurat = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO kop_surat 
        (nama_data, periode_mulai, periode_selesai, kop_url, jenis_ttd, is_active) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [nama_data, periode_mulai, periode_selesai, kop_url, jenis_ttd || "QR", toTinyInt(is_active, 1)],
+       VALUES (?, ?, ?, ?, NULL, ?)`,
+      [nama_data, periode_mulai, periode_selesai, kop_url, toTinyInt(is_active, 1)],
     );
 
     res.status(201).json({
@@ -139,7 +139,7 @@ export const getKopSuratById = async (req, res) => {
 export const updateKopSurat = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nama_data, periode_mulai, periode_selesai, jenis_ttd } = req.body;
+    const { nama_data, periode_mulai, periode_selesai } = req.body;
 
     // Validation
     if (!nama_data || !periode_mulai || !periode_selesai) {
@@ -189,10 +189,9 @@ export const updateKopSurat = async (req, res) => {
    nama_data = ?,
    periode_mulai = ?,
    periode_selesai = ?,
-   kop_url = ?,
-   jenis_ttd = ?
+   kop_url = ?
    WHERE id = ?`,
-      [nama_data, periode_mulai, periode_selesai, kop_url, jenis_ttd || "QR", id],
+      [nama_data, periode_mulai, periode_selesai, kop_url, id],
     );
 
     res.json({
