@@ -4,9 +4,9 @@ import helmet from "helmet";
 import compression from "compression";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
@@ -22,6 +22,24 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const ensureDir = (dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+};
+
+const UPLOADS_DIR = path.join(__dirname, "uploads");
+
+[
+  "templates",
+  "signatures",
+  "kop-surat",
+  "pejabat/signatures",
+  "pejabat/qrcode",
+].forEach((folder) => {
+  ensureDir(path.join(UPLOADS_DIR, folder));
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
