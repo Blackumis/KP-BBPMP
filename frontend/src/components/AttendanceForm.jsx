@@ -509,7 +509,15 @@ const AttendanceForm = ({ eventId }) => {
             </p>
           </div>
         )}
-        <p className="text-gray-500 text-sm">Sertifikat akan dikirimkan ke email terdaftar setelah kegiatan selesai.</p>
+        <p className="text-gray-500 text-sm mb-2">Sertifikat akan dikirimkan ke email terdaftar setelah kegiatan selesai.</p>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <p className="text-xs text-yellow-800 flex items-start gap-2">
+            <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span><strong>Penting:</strong> Jika email tidak masuk, silakan periksa folder Spam/Junk di email Anda.</span>
+          </p>
+        </div>
       </div>
     );
   }
@@ -524,15 +532,6 @@ const AttendanceForm = ({ eventId }) => {
             <div className="absolute top-0 left-0 w-1 h-full bg-blue-600"></div>
             <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-[10px] md:text-xs font-bold rounded-full mb-3 tracking-wider">FORMULIR KEHADIRAN</span>
             <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 leading-tight">{config.nama_kegiatan || "Nama Kegiatan"}</h1>
-
-            <div className="flex flex-col sm:flex-row sm:flex-wrap text-sm text-gray-600 gap-y-3 gap-x-6 mt-4">
-              <div className="flex items-center">
-                <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                {formatDate(config.tanggal_mulai)}
-              </div>
-            </div>
           </div>
 
           <div className="p-5 md:p-8">

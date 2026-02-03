@@ -114,8 +114,8 @@ export const createOfficial = async (req, res) => {
       // Create QR code containing URL to official verification page
       const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/official/OFFICIAL_ID_PLACEHOLDER`;
       await QRCode.toFile(qrPath, verificationUrl, {
-        width: 300,
-        margin: 1,
+        width: 400,
+        margin: 0,
         errorCorrectionLevel: "H",
       });
 
@@ -133,8 +133,8 @@ export const createOfficial = async (req, res) => {
       const actualVerificationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/official/${result.insertId}`;
       const qrPath = path.join(__dirname, "..", signature_qr_path);
       await QRCode.toFile(qrPath, actualVerificationUrl, {
-        width: 300,
-        margin: 1,
+        width: 400,
+        margin: 0,
         errorCorrectionLevel: "H",
       });
     }
@@ -201,8 +201,8 @@ export const updateOfficial = async (req, res) => {
 
       const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/official/${id}`;
       await QRCode.toFile(qrPath, verificationUrl, {
-        width: 300,
-        margin: 1,
+        width: 400,
+        margin: 0,
         errorCorrectionLevel: "H",
       });
 
