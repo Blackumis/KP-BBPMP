@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { showNotification } from "./Notification";
 
 const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, formConfig }) => {
   // Generate default fields based on formConfig
@@ -16,6 +17,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
         fontSize: 28,
         fontWeight: "bold",
         fontFamily: "Times-Roman",
+        color: "#000000",
         textAlign: "center",
         wordWrap: false,
       },
@@ -31,6 +33,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
         fontSize: 14,
         fontWeight: "normal",
         fontFamily: "Times-Roman",
+        color: "#000000",
         textAlign: "center",
         wordWrap: false,
       },
@@ -50,6 +53,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
       fontSize: 24,
       fontWeight: "bold",
       fontFamily: "Times-Roman",
+      color: "#000000",
       textAlign: "center",
       wordWrap: false,
     });
@@ -439,10 +443,14 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
   };
 
   const addCustomTextField = () => {
+    // Count existing custom text fields to generate number
+    const customFieldCount = fields.filter(f => f.id.startsWith('custom_text_')).length;
+    const nextNumber = customFieldCount + 1;
+    
     const newId = `custom_text_${Date.now()}`;
     const newField = {
       id: newId,
-      label: "Text Kustom",
+      label: `Text Tambahan ${nextNumber}`,
       type: "text",
       content: "Teks kustom Anda di sini",
       x: 50,
@@ -452,6 +460,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
       fontSize: 14,
       fontWeight: "normal",
       fontFamily: "Times-Roman",
+      color: "#000000",
       textAlign: "center",
       wordWrap: false,
     };
@@ -585,6 +594,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                           fontSize: `${field.fontSize * 0.6}px`,
                           fontWeight: field.fontWeight,
                           fontFamily: getFontFamilyStyle(field.fontFamily || "Times-Roman"),
+                          color: field.color || "#000000",
                           textAlign: field.textAlign || "left",
                           justifyContent: field.textAlign === "center" ? "center" : field.textAlign === "right" ? "flex-end" : "flex-start",
                           wordWrap: field.wordWrap ? "break-word" : "normal",
@@ -666,16 +676,9 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                   <p className="text-sm font-semibold text-blue-800 mb-2">
                     {selectedFields.length} Field Dipilih
                   </p>
-                  <p className="text-xs text-blue-600 mb-3">
+                  <p className="text-xs text-blue-600">
                     Ctrl+Click untuk memilih/membatalkan. Drag untuk memindahkan bersama.
                   </p>
-                  <button
-                    type="button"
-                    onClick={deleteSelectedFields}
-                    className="w-full px-3 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition"
-                  >
-                    Hapus
-                  </button>
                 </div>
               </div>
             ) : selectedFieldData ? (
@@ -742,6 +745,28 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                         <option value="normal">Normal</option>
                         <option value="bold">Bold</option>
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Warna Font</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={selectedFieldData.color || "#000000"}
+                          onChange={(e) => updateField(selectedFieldData.id, { color: e.target.value })}
+                          className="h-9 w-16 border border-gray-300 rounded cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={selectedFieldData.color || "#000000"}
+                          onChange={(e) => updateField(selectedFieldData.id, { color: e.target.value })}
+                          placeholder="#000000"
+                          className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono uppercase"
+                          maxLength="7"
+                          pattern="^#[0-9A-Fa-f]{6}$"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Default: Hitam (#000000)</p>
                     </div>
 
                     <div>
@@ -839,13 +864,12 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm(`Hapus field "${selectedFieldData.label}"?`)) {
-                          deleteField(selectedFieldData.id);
-                        }
+                        deleteField(selectedFieldData.id);
+                        showNotification("Teks berhasil dihapus", "success");
                       }}
                       className="w-full px-3 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition"
                     >
-                      🗑️ Hapus Field
+                      Hapus
                     </button>
                   </div>
                 )}              </div>

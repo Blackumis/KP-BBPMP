@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS template_sertif (
   created_by INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES admin(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES admin(id) ON DELETE RESTRICT,
   INDEX idx_name (name),
   INDEX idx_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -171,4 +171,15 @@ CREATE TABLE IF NOT EXISTS kop_surat (
   INDEX idx_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Note: Run 'npm run create-admin' to create the default admin user
+-- Insert Default Admin User
+-- Password: admin123 (hashed with bcrypt, 10 rounds)
+INSERT INTO admin (username, email, password, full_name) VALUES
+('admin', 'admin@kpbbpmp.com', '$2a$10$NY6eRmrH8o31gxv4PlC7Pux.7YLk8QD6nwgT2FRhljDyGqXXalUgu', 'Administrator')
+ON DUPLICATE KEY UPDATE 
+  email = VALUES(email), 
+  full_name = VALUES(full_name);
+
+-- ⚠️ PENTING: Ganti password setelah login pertama kali!
+-- Login credentials:
+-- Username: admin
+-- Password: admin123

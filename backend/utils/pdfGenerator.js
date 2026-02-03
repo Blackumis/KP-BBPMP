@@ -176,7 +176,8 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
           } else {
             // Text field (static or dynamic)
             const fontName = getFontName(field.fontFamily || "Times-Roman", field.fontWeight || "normal");
-            doc.font(fontName).fontSize(field.fontSize).fillColor("black");
+            const textColor = field.color || "#000000";  // Default to black if no color specified
+            doc.font(fontName).fontSize(field.fontSize).fillColor(textColor);
 
             // Get text content
             const text = field.type === "text" ? field.content : getDynamicValue(field.field);

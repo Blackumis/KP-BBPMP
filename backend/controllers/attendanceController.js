@@ -55,7 +55,9 @@ export const submitAttendance = async (req, res) => {
     // If a file was uploaded under 'signature', build the public URL and use that
     let signature_url = null;
     if (req.file) {
-      signature_url = `${req.protocol}://${req.get("host")}/uploads/signatures/${req.file.filename}`;
+      // Extract relative path from the full file path (includes event subfolder)
+      const relativePath = req.file.path.split('uploads').pop();
+      signature_url = `${req.protocol}://${req.get("host")}/uploads${relativePath}`;
     } else if (req.body.signature_url) {
       // Fallback for legacy clients that send a URL in the body
       signature_url = req.body.signature_url;

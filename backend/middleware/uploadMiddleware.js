@@ -37,26 +37,35 @@ const slugify = (text) =>
     .replace(/(^-|-$)/g, "");
 
 const signatureStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadSignatureDir);
-  },
-
-  filename: async (req, file, cb) => {
+  destination: async (req, file, cb) => {
     try {
       const { event_id } = req.params;
-      const { nama_lengkap } = req.body;
-
-      // Ambil nama kegiatan dari DB
+      
+      // Get event name from database
       const [rows] = await pool.query(
         "SELECT nama_kegiatan FROM kegiatan WHERE id = ?",
         [event_id]
       );
-
-      const eventName = rows.length
-        ? rows[0].nama_kegiatan
-        : "event";
-
+      
+      const eventName = rows.length ? rows[0].nama_kegiatan : "event";
       const eventSlug = slugify(eventName);
+      
+      // Create event-specific signature folder
+      const eventSignatureDir = path.join(uploadSignatureDir, eventSlug);
+      if (!fs.existsSync(eventSignatureDir)) {
+        fs.mkdirSync(eventSignatureDir, { recursive: true });
+      }
+      
+      cb(null, eventSignatureDir);
+    } catch (error) {
+      cb(error);
+    }
+  },
+
+  filename: async (req, file, cb) => {
+    try {
+      const { nama_lengkap } = req.body;
+
       const nameSlug = nama_lengkap
         ? slugify(nama_lengkap)
         : "peserta";
@@ -66,7 +75,7 @@ const signatureStorage = multer.diskStorage({
 
       cb(
         null,
-        `signature-${eventSlug}-${nameSlug}-${timestamp}${ext}`
+        `signature-${nameSlug}-${timestamp}${ext}`
       );
     } catch (error) {
       cb(error);
