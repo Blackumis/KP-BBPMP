@@ -3,7 +3,7 @@ import { showNotification } from "./Notification";
 
 const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, formConfig }) => {
   // Generate default fields based on formConfig
-  const generateDefaultFields = () => {
+  const generateDefaultFields = (config = formConfig) => {
     const defaultFields = [
       {
         id: "title",
@@ -59,7 +59,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
     });
 
     // Only add optional fields if they're required
-    if (formConfig?.requireUnit === true) {
+    if (config?.requireUnit === true) {
       defaultFields.push({
         id: "unit",
         label: "Unit Kerja",
@@ -77,7 +77,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
       });
     }
 
-    if (formConfig?.requireCity === true) {
+    if (config?.requireCity === true) {
       defaultFields.push({
         id: "city",
         label: "Kabupaten/Kota",
@@ -97,41 +97,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
 
     // NIP field removed - tidak ditampilkan di certificate editor
 
-    if (formConfig?.requireRank === true) {
-      defaultFields.push({
-        id: "rank",
-        label: "Pangkat/Golongan",
-        type: "dynamic",
-        field: "pangkat_golongan",
-        x: 15,
-        y: 90,
-        width: 30,
-        height: 4,
-        fontSize: 10,
-        fontWeight: "normal",
-        fontFamily: "Times-Roman",
-        textAlign: "left",
-        wordWrap: false,
-      });
-    }
-
-    if (formConfig?.requirePosition === true) {
-      defaultFields.push({
-        id: "position",
-        label: "Jabatan",
-        type: "dynamic",
-        field: "jabatan",
-        x: 15,
-        y: 94,
-        width: 30,
-        height: 4,
-        fontSize: 10,
-        fontWeight: "normal",
-        fontFamily: "Times-Roman",
-        textAlign: "left",
-        wordWrap: true,
-      });
-    }
+    // NIP, Pangkat/Golongan, dan Jabatan dihapus - tidak ditampilkan di sertifikat
 
     defaultFields.push({
       id: "event_text",
@@ -197,16 +163,16 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
       wordWrap: false,
     });
 
-    // QR Code for validation
+    // QR Code for validation - small bottom left
     defaultFields.push({
       id: "qr_validation",
       label: "QR Validasi",
       type: "qr",
       field: "validation_url",
-      x: 85,
-      y: 85,
-      width: 10,
-      height: 10,
+      x: 8,
+      y: 88,
+      width: 8,
+      height: 8,
       fontSize: 8,
       fontWeight: "normal",
       fontFamily: "Times-Roman",
@@ -214,22 +180,24 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
       wordWrap: false,
     });
 
-    // QR Code for signature
-    defaultFields.push({
-      id: "qr_signature",
-      label: "QR TTD Atasan",
-      type: "qr",
-      field: "signature_authority",
-      x: 13,
-      y: 85,
-      width: 10,
-      height: 10,
-      fontSize: 8,
-      fontWeight: "normal",
-      fontFamily: "Times-Roman",
-      textAlign: "center",
-      wordWrap: false,
-    });
+    // QR Code for signature - center bottom (hanya jika pejabat dipilih)
+    if (config?.official_id && config.official_id !== "") {
+      defaultFields.push({
+        id: "qr_signature",
+        label: "QR TTD Atasan",
+        type: "qr",
+        field: "signature_authority",
+        x: 50,
+        y: 82,
+        width: 14,
+        height: 14,
+        fontSize: 8,
+        fontWeight: "normal",
+        fontFamily: "Times-Roman",
+        textAlign: "center",
+        wordWrap: false,
+      });
+    }
 
     return defaultFields;
   };
@@ -261,12 +229,42 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
         // Keep custom text fields
         const customFields = prevFields.filter(f => f.id.startsWith('custom_text_'));
         // Regenerate default fields based on new formConfig
-        const newDefaultFields = generateDefaultFields();
+        const newDefaultFields = generateDefaultFields(formConfig);
         // Merge: default fields + existing custom fields
         return [...newDefaultFields, ...customFields];
       });
+    } else {
+      // If we have saved layout, only add/remove QR signature based on official_id
+      setFields(prevFields => {
+        const hasQRSignature = prevFields.some(f => f.id === 'qr_signature');
+        const shouldHaveQRSignature = formConfig?.official_id && formConfig.official_id !== "";
+        
+        if (shouldHaveQRSignature && !hasQRSignature) {
+          // Add QR signature if it should exist but doesn't
+          return [...prevFields, {
+            id: "qr_signature",
+            label: "QR TTD Atasan",
+            type: "qr",
+            field: "signature_authority",
+            x: 50,
+            y: 85,
+            width: 14,
+            height: 14,
+            fontSize: 8,
+            fontWeight: "normal",
+            fontFamily: "Times-Roman",
+            textAlign: "center",
+            wordWrap: false,
+          }];
+        } else if (!shouldHaveQRSignature && hasQRSignature) {
+          // Remove QR signature if it exists but shouldn't
+          return prevFields.filter(f => f.id !== 'qr_signature');
+        }
+        
+        return prevFields;
+      });
     }
-  }, [formConfig?.requireUnit, formConfig?.requireCity, formConfig?.requireNIP, formConfig?.requireRank, formConfig?.requirePosition]);
+  }, [formConfig?.requireUnit, formConfig?.requireCity, formConfig?.requireNIP, formConfig?.requireRank, formConfig?.requirePosition, formConfig?.official_id]);
 
   // Notify parent of layout changes
   useEffect(() => {
@@ -568,6 +566,27 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                 const isSelected = selectedFields.includes(field.id);
                 const isQR = field.type === "qr";
 
+                // For QR codes, ensure square aspect ratio (use smaller dimension)
+                let displayWidth = field.width;
+                let displayHeight = field.height;
+                if (isQR) {
+                  const minSize = Math.min(field.width, field.height);
+                  displayWidth = minSize;
+                  displayHeight = minSize;
+                }
+
+                // Calculate position adjustments to match PDF rendering
+                let leftPos = field.x;
+                let transformValue = "none";
+                
+                if (field.textAlign === "center") {
+                  // For center alignment, shift left by half the width
+                  leftPos = field.x - (displayWidth / 2);
+                } else if (field.textAlign === "right") {
+                  // For right alignment, shift left by full width
+                  leftPos = field.x - displayWidth;
+                }
+
                 return (
                   <div
                     key={field.id}
@@ -578,11 +597,11 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                         : "border-transparent hover:border-blue-300 hover:bg-blue-50/20 z-10"
                     } ${isQR ? "flex items-center justify-center bg-gray-200" : ""}`}
                     style={{
-                      left: `${field.x}%`,
+                      left: `${leftPos}%`,
                       top: `${field.y}%`,
-                      width: `${field.width}%`,
-                      height: `${field.height}%`,
-                      transform: field.textAlign === "center" ? "translateX(-50%)" : field.textAlign === "right" ? "translateX(-100%)" : "none",
+                      width: `${displayWidth}%`,
+                      height: `${displayHeight}%`,
+                      transform: transformValue,
                       transition: "none",
                       cursor: isDragging ? "grabbing" : "grab",
                     }}
@@ -655,9 +674,6 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
               })}
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            * Preview ini hanya menunjukkan posisi relatif. Ukuran dan wrapping akan menyesuaikan di PDF final.
-          </p>
         </div>
 
         {/* Controls Panel */}
@@ -766,7 +782,6 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                           pattern="^#[0-9A-Fa-f]{6}$"
                         />
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Default: Hitam (#000000)</p>
                     </div>
 
                     <div>
@@ -799,7 +814,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                           onChange={(e) => updateField(selectedFieldData.id, { wordWrap: e.target.checked })}
                           className="mr-2"
                         />
-                        Word Wrap (Auto line break)
+                        Word Wrap
                       </label>
                     </div>
                   </>
@@ -834,27 +849,44 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Width (%)</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{selectedFieldData.type === "qr" ? "Width (%)" : "Width (%)"}</label>
                     <input
                       type="number"
                       min="5"
                       max="100"
                       step="0.1"
                       value={selectedFieldData.width.toFixed(1)}
-                      onChange={(e) => updateField(selectedFieldData.id, { width: parseFloat(e.target.value) })}
+                      onChange={(e) => {
+                        const newWidth = parseFloat(e.target.value);
+                        if (selectedFieldData.type === "qr") {
+                          // For QR codes, keep width and height equal
+                          updateField(selectedFieldData.id, { width: newWidth, height: newWidth });
+                        } else {
+                          updateField(selectedFieldData.id, { width: newWidth });
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Height (%)</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{selectedFieldData.type === "qr" ? "Height (%)" : "Height (%)"}</label>
                     <input
                       type="number"
                       min="3"
                       max="50"
                       step="0.1"
                       value={selectedFieldData.height.toFixed(1)}
-                      onChange={(e) => updateField(selectedFieldData.id, { height: parseFloat(e.target.value) })}
+                      onChange={(e) => {
+                        const newHeight = parseFloat(e.target.value);
+                        if (selectedFieldData.type === "qr") {
+                          // For QR codes, keep width and height equal
+                          updateField(selectedFieldData.id, { width: newHeight, height: newHeight });
+                        } else {
+                          updateField(selectedFieldData.id, { height: newHeight });
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      disabled={selectedFieldData.type === "qr"}
                     />
                   </div>
                 </div>
