@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { authAPI } from "../services/api";
 import { showNotification } from "./Notification";
 
 const Login = ({ onLogin }) => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +26,40 @@ const Login = ({ onLogin }) => {
         onLogin(response.data.admin);
       }
     } catch (err) {
-      showNotification(err.message || "Login gagal. Periksa username dan password.", "error");
+      // Determine error type and redirect to error page for server errors
+      const errorMessage = err.message || "";
+      const isServerError = 
+        errorMessage.toLowerCase().includes("server") ||
+        errorMessage.toLowerCase().includes("network") ||
+        errorMessage.toLowerCase().includes("database") ||
+        errorMessage.toLowerCase().includes("timeout") ||
+        errorMessage.toLowerCase().includes("failed to fetch") ||
+        errorMessage.toLowerCase().includes("connection") ||
+        err.status >= 500;
+
+      if (isServerError) {
+        // Determine specific error type
+        let errorType = "server";
+        if (errorMessage.toLowerCase().includes("database") || errorMessage.toLowerCase().includes("db")) {
+          errorType = "database";
+        } else if (errorMessage.toLowerCase().includes("network") || errorMessage.toLowerCase().includes("failed to fetch") || errorMessage.toLowerCase().includes("connection")) {
+          errorType = "network";
+        } else if (errorMessage.toLowerCase().includes("timeout")) {
+          errorType = "timeout";
+        }
+
+        navigate("/error", {
+          state: {
+            errorDetails: {
+              type: errorType,
+              message: errorMessage
+            }
+          }
+        });
+      } else {
+        // For auth errors, show notification
+        showNotification(err.message || "Login gagal. Periksa username dan password.", "error");
+      }
     } finally {
       setIsLoading(false);
     }

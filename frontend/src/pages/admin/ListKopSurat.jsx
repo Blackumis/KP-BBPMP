@@ -151,7 +151,9 @@ const ListKopSurat = () => {
       day: "numeric",
     });
   };
-  const VITE_BASE_URL = import.meta.env.VITE_BASE_URL;
+  
+  // Use VITE_BASE_URL with fallback to localhost:5000
+  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5000";
 
   if (loading) {
     return (
@@ -251,7 +253,7 @@ const ListKopSurat = () => {
                     </td>
                     <td className="py-4 px-4 text-center">
                       {kopSurat.kop_url ? (
-                        <img src={`${VITE_BASE_URL}/${kopSurat.kop_url}`} alt="Kop Surat" className="h-12 mx-auto object-contain border rounded" />
+                        <img src={`${BASE_URL}/${kopSurat.kop_url}`} alt="Kop Surat" className="h-12 mx-auto object-contain border rounded" />
                       ) : (
                         <span className="text-xs text-gray-400">Tidak ada</span>
                       )}

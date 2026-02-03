@@ -11,6 +11,7 @@ import AdminPage from "./pages/adminPage";
 import ValidasiSertifikat from "./pages/validasisertifikatPage";
 import OfficialVerification from "./pages/officialverificationPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import ServerErrorPage from "./pages/ServerErrorPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { authAPI } from "./services/api";
 import { NotificationManager } from "./components/Notification";
@@ -40,6 +41,9 @@ export default function App() {
     <>
       <NotificationManager />
       <Routes>
+      {/* Public route - Server Error page */}
+      <Route path="/error" element={<ServerErrorPage />} />
+      
       {/* Public route without MainLayout - Standalone validation page */}
       <Route path="/validasi/*" element={<ValidasiSertifikat />} />
       

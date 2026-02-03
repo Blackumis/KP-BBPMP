@@ -133,7 +133,7 @@ const OfficialsManagement = () => {
       <div className="flex justify-between items-center mb-6 border-b pb-4">
         <h2 className="text-2xl font-bold text-gray-800 flex items-center">
           <span className="bg-blue-100 text-blue-700 py-1 px-3 rounded text-sm mr-3">Admin</span>
-          Penandatangan Pejabat
+          Tanda Tangan Pejabat
         </h2>
         <div className="flex gap-2">
           <button
