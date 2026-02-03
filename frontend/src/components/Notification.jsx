@@ -119,35 +119,40 @@ const Notification = ({ message, type = "info", duration = 2000, onClose }) => {
   );
 };
 
-// Notification Manager untuk multiple notifications
+// Notification Manager - shows only one notification at a time (replaces previous)
 export const NotificationManager = () => {
-  const [notifications, setNotifications] = useState([]);
+  const [notification, setNotification] = useState(null);
+  const [key, setKey] = useState(0);
 
   useEffect(() => {
     // Listen for custom notification events
     const handleNotification = (event) => {
       const { message, type, duration } = event.detail;
-      const id = `${Date.now()}-${Math.random()}`;
-
-      setNotifications((prev) => [...prev, { id, message, type, duration }]);
+      
+      // Replace the current notification with the new one
+      setNotification({ message, type, duration });
+      // Increment key to force re-render and restart animation
+      setKey((prev) => prev + 1);
     };
 
     window.addEventListener("show-notification", handleNotification);
     return () => window.removeEventListener("show-notification", handleNotification);
   }, []);
 
-  const removeNotification = (id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  const removeNotification = () => {
+    setNotification(null);
   };
 
+  if (!notification) return null;
+
   return (
-    <div className="fixed top-6 right-6 flex flex-col gap-3" style={{ zIndex: 99999 }}>
-      {notifications.map((notif, index) => (
-        <div key={notif.id} style={{ marginTop: index * 10 }}>
-          <Notification message={notif.message} type={notif.type} duration={notif.duration || 2500} onClose={() => removeNotification(notif.id)} />
-        </div>
-      ))}
-    </div>
+    <Notification 
+      key={key}
+      message={notification.message} 
+      type={notification.type} 
+      duration={notification.duration || 2500} 
+      onClose={removeNotification} 
+    />
   );
 };
 

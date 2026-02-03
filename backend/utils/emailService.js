@@ -18,7 +18,7 @@ const transporter = nodemailer.createTransport({
 export const sendCertificateEmail = async (to, subject, html, attachments = []) => {
   try {
     const mailOptions = {
-      from: `"KP BBPMP" <${process.env.SMTP_USER}>`,
+      from: `"BBPMP" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,

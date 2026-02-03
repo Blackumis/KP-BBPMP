@@ -223,11 +223,10 @@ export const sendCertificate = async (req, res) => {
     if (!attendance.certificate_path) {
       return res.status(400).json({
         success: false,
-        message: 'Certificate not generated yet'
+        message: 'sertifikat belum dibuat'
       });
     }
 
-    // Prepare email
     const subject = `Sertifikat - ${attendance.nama_kegiatan}`;
     const html = `
       <h2>Sertifikat Kegiatan</h2>
@@ -237,7 +236,7 @@ export const sendCertificate = async (req, res) => {
       <br>
       <p>Terima kasih atas partisipasi Anda.</p>
       <br>
-      <p>Salam,<br>Tim KP BBPMP</p>
+      <p>Salam,<br>BBPMP</p>
     `;
 
     const certificatePath = path.join(__dirname, '..', attendance.certificate_path);

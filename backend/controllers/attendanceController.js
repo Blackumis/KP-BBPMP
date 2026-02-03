@@ -129,7 +129,7 @@ export const submitAttendance = async (req, res) => {
     if (existing.length > 0) {
       return res.status(409).json({
         success: false,
-        message: "You have already submitted attendance for this event",
+        message: "Anda Telah Melakukan Absensi Pada Kegiatan Ini",
       });
     }
 

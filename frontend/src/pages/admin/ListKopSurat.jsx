@@ -237,7 +237,6 @@ const ListKopSurat = () => {
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Instansi / Unit</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Periode</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Kop</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Jenis TTD</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
                 </tr>
@@ -249,9 +248,6 @@ const ListKopSurat = () => {
                     <td className="py-4 px-4 text-sm font-medium text-gray-900">{kopSurat.nama_data}</td>
                     <td className="py-4 px-4 text-sm text-gray-500">
                       {formatDate(kopSurat.periode_mulai)} - {formatDate(kopSurat.periode_selesai)}
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">{kopSurat.jenis_ttd}</span>
                     </td>
                     <td className="py-4 px-4 text-center">
                       {kopSurat.kop_url ? (
