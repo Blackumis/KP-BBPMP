@@ -33,7 +33,7 @@ const AttendancelistPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
-      <AttendanceList event={event} onBack={() => navigate("/admin")} />
+      <AttendanceList event={event} onBack={() => navigate("/admin", { state: { skipSplash: true } })} />
     </div>
   );
 };

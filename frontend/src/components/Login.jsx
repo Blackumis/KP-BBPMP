@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { authAPI } from "../services/api";
 import { showNotification } from "./Notification";
 
 const Login = ({ onLogin }) => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -11,13 +13,53 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
     setIsLoading(true);
 
+    // Validasi field kosong
+    if (!username.trim() || !password.trim()) {
+      showNotification("Username dan password harus diisi", "error");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await authAPI.login(username, password);
       if (response.success) {
         onLogin(response.data.admin);
       }
     } catch (err) {
-      showNotification(err.message || "Login gagal. Periksa username dan password.", "error");
+      // Determine error type and redirect to error page for server errors
+      const errorMessage = err.message || "";
+      const isServerError = 
+        errorMessage.toLowerCase().includes("server") ||
+        errorMessage.toLowerCase().includes("network") ||
+        errorMessage.toLowerCase().includes("database") ||
+        errorMessage.toLowerCase().includes("timeout") ||
+        errorMessage.toLowerCase().includes("failed to fetch") ||
+        errorMessage.toLowerCase().includes("connection") ||
+        err.status >= 500;
+
+      if (isServerError) {
+        // Determine specific error type
+        let errorType = "server";
+        if (errorMessage.toLowerCase().includes("database") || errorMessage.toLowerCase().includes("db")) {
+          errorType = "database";
+        } else if (errorMessage.toLowerCase().includes("network") || errorMessage.toLowerCase().includes("failed to fetch") || errorMessage.toLowerCase().includes("connection")) {
+          errorType = "network";
+        } else if (errorMessage.toLowerCase().includes("timeout")) {
+          errorType = "timeout";
+        }
+
+        navigate("/error", {
+          state: {
+            errorDetails: {
+              type: errorType,
+              message: errorMessage
+            }
+          }
+        });
+      } else {
+        // For auth errors, show notification
+        showNotification(err.message || "Login gagal. Periksa username dan password.", "error");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -40,7 +82,6 @@ const Login = ({ onLogin }) => {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Masukkan username"
-              required
               disabled={isLoading}
             />
           </div>
@@ -56,7 +97,6 @@ const Login = ({ onLogin }) => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Masukkan password"
-              required
               disabled={isLoading}
             />
           </div>
@@ -79,9 +119,6 @@ const Login = ({ onLogin }) => {
             )}
           </button>
         </form>
-        <div className="mt-4 text-center text-xs text-gray-500">
-          <p>Gunakan akun admin yang telah didaftarkan</p>
-        </div>
       </div>
     </div>
   );
