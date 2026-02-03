@@ -30,7 +30,7 @@ const PublicAttendancePage = ({ eventId: propEventId }) => {
 
       {/* Content */}
       <div className="grow">
-        <div className="max-w-4xl mx-auto w-full p-6">
+        <div className="max-w-6xl mx-auto w-full p-1">
           <AttendanceForm eventId={eventId} onReset={goHome} />
         </div>
       </div>

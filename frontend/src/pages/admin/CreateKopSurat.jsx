@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { kopSuratAPI } from "../../services/api";
 import { showNotification } from "../../components/Notification";
@@ -6,13 +6,13 @@ import { showNotification } from "../../components/Notification";
 const CreateKopSurat = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef(null);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     nama_data: "",
     periode_mulai: "",
     periode_selesai: "",
-    jenis_ttd: "QR",
-    is_active: true,
+    is_active: false,
     kop_image: null,
     kop_image_preview: null,
   });
@@ -190,7 +190,7 @@ const CreateKopSurat = () => {
                   Seret dan lepas gambar kop surat di sini, atau{" "}
                   <label className="text-blue-600 hover:text-blue-800 cursor-pointer font-medium">
                     klik untuk memilih
-                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                   </label>
                 </p>
                 <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF hingga 5MB</p>
@@ -199,7 +199,7 @@ const CreateKopSurat = () => {
           </div>
         </div>
 
-        {/* Jenis TTD */}
+        {/* Jenis TTD
         <div className="mb-6">
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             Jenis Tanda Tangan <span className="text-red-500">*</span>
@@ -214,15 +214,7 @@ const CreateKopSurat = () => {
               <span className="ml-2 text-sm text-gray-700">Tanda Tangan Basah</span>
             </label>
           </div>
-        </div>
-
-        {/* Status Aktif */}
-        <div className="mb-6">
-          <label className="flex items-center">
-            <input type="checkbox" name="is_active" checked={formData.is_active} onChange={handleInputChange} className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500" />
-            <span className="ml-2 text-sm text-gray-700">Aktifkan kop surat ini</span>
-          </label>
-        </div>
+        </div> */}
 
         {/* Buttons */}
         <div className="flex gap-4 justify-end pt-6 border-t">
