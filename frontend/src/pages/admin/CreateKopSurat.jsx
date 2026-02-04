@@ -7,7 +7,6 @@ const CreateKopSurat = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef(null);
-  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     nama_data: "",
     periode_mulai: "",
@@ -23,7 +22,6 @@ const CreateKopSurat = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    setError(null);
   };
 
   const handleImageChange = (e) => {
@@ -31,12 +29,12 @@ const CreateKopSurat = () => {
     if (file) {
       // Validate file type
       if (!file.type.startsWith("image/")) {
-        setError("Harap pilih file gambar yang valid");
+        showNotification("Harap pilih file gambar yang valid", "error");
         return;
       }
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        setError("Ukuran gambar tidak boleh lebih dari 5MB");
+        showNotification("Ukuran gambar tidak boleh lebih dari 5MB", "error");
         return;
       }
 
@@ -47,31 +45,31 @@ const CreateKopSurat = () => {
           kop_image: file,
           kop_image_preview: reader.result,
         }));
+        showNotification("Gambar berhasil diunggah", "success");
       };
       reader.readAsDataURL(file);
-      setError(null);
     }
   };
 
   const validateForm = () => {
     if (!formData.nama_data.trim()) {
-      setError("Nama instansi / unit harus diisi");
+      showNotification("Nama instansi / unit harus diisi", "error");
       return false;
     }
     if (!formData.periode_mulai) {
-      setError("Periode mulai harus diisi");
+      showNotification("Periode mulai harus diisi", "error");
       return false;
     }
     if (!formData.periode_selesai) {
-      setError("Periode selesai harus diisi");
+      showNotification("Periode selesai harus diisi", "error");
       return false;
     }
     if (new Date(formData.periode_mulai) > new Date(formData.periode_selesai)) {
-      setError("Periode mulai tidak boleh lebih dari periode selesai");
+      showNotification("Periode mulai tidak boleh lebih dari periode selesai", "error");
       return false;
     }
     if (!formData.kop_image) {
-      setError("Gambar kop surat harus diunggah");
+      showNotification("Gambar kop surat harus diunggah", "error");
       return false;
     }
     return true;
@@ -88,14 +86,23 @@ const CreateKopSurat = () => {
         showNotification("Kop surat berhasil dibuat", "success");
         navigate("/admin/kop-surat");
       } else {
-        setError(response.message || "Gagal membuat kop surat");
+        showNotification(response.message || "Gagal membuat kop surat", "error");
       }
     } catch (err) {
-      setError(err.message || "Terjadi kesalahan saat membuat kop surat");
+      showNotification(err.message || "Terjadi kesalahan saat membuat kop surat", "error");
       console.error(err);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData({
+      ...formData,
+      kop_image: null,
+      kop_image_preview: null,
+    });
+    showNotification("Gambar berhasil dihapus", "info");
   };
 
   return (
@@ -106,12 +113,6 @@ const CreateKopSurat = () => {
           Buat Kop Surat Baru
         </h2>
       </div>
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-600 text-sm font-medium">{error}</p>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit}>
         {/* Nama Instansi / Unit */}
@@ -167,17 +168,7 @@ const CreateKopSurat = () => {
               <div className="space-y-4">
                 <img src={formData.kop_image_preview} alt="Kop preview" className="max-h-64 mx-auto rounded" />
                 <p className="text-sm text-gray-600">{formData.kop_image?.name}</p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      kop_image: null,
-                      kop_image_preview: null,
-                    })
-                  }
-                  className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition"
-                >
+                <button type="button" onClick={handleRemoveImage} className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition">
                   Hapus
                 </button>
               </div>
@@ -198,23 +189,6 @@ const CreateKopSurat = () => {
             )}
           </div>
         </div>
-
-        {/* Jenis TTD
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Jenis Tanda Tangan <span className="text-red-500">*</span>
-          </label>
-          <div className="flex gap-4">
-            <label className="flex items-center">
-              <input type="radio" name="jenis_ttd" value="QR" checked={formData.jenis_ttd === "QR"} onChange={handleInputChange} className="w-4 h-4 text-blue-600" />
-              <span className="ml-2 text-sm text-gray-700">QR Code</span>
-            </label>
-            <label className="flex items-center">
-              <input type="radio" name="jenis_ttd" value="BASAH" checked={formData.jenis_ttd === "BASAH"} onChange={handleInputChange} className="w-4 h-4 text-blue-600" />
-              <span className="ml-2 text-sm text-gray-700">Tanda Tangan Basah</span>
-            </label>
-          </div>
-        </div> */}
 
         {/* Buttons */}
         <div className="flex gap-4 justify-end pt-6 border-t">

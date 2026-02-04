@@ -896,7 +896,7 @@ const AttendanceForm = ({ eventId }) => {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
-                        Gambar Sendiri
+                        Tulis Tanda Tangan
                       </button>
 
                       <button
@@ -1164,13 +1164,16 @@ const AttendanceForm = ({ eventId }) => {
             </h3>
             <div className="bg-white/20 rounded-lg p-3 text-center backdrop-blur-sm">
               <span className="font-mono text-base md:text-lg font-bold tracking-wider block">
-                {new Date(config.batas_waktu_absensi).toLocaleString("id-ID", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }).replace(/\./g, ":")} WIB
+                {new Date(config.batas_waktu_absensi)
+                  .toLocaleString("id-ID", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                  .replace(/\./g, ":")}{" "}
+                WIB
               </span>
             </div>
           </div>
