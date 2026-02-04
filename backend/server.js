@@ -17,6 +17,7 @@ import referenceRoutes from "./routes/referenceRoutes.js";
 import templateRoutes from "./routes/templateRoutes.js";
 import kopSuratRoutes from "./routes/kopSuratRoutes.js";
 import officialRoutes from "./routes/officialRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 
 dotenv.config();
 
@@ -83,6 +84,7 @@ app.use("/api/reference", referenceRoutes);
 app.use("/api/templates", templateRoutes);
 app.use("/api/officials", officialRoutes);
 app.use("/api/kop-surat", kopSuratRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
