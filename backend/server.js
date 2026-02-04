@@ -32,13 +32,7 @@ const ensureDir = (dir) => {
 
 const UPLOADS_DIR = path.join(__dirname, "uploads");
 
-[
-  "templates",
-  "signatures",
-  "kop-surat",
-  "pejabat/signatures",
-  "pejabat/qrcode",
-].forEach((folder) => {
+["templates", "signatures", "kop-surat", "pejabat/signatures", "pejabat/qrcode"].forEach((folder) => {
   ensureDir(path.join(UPLOADS_DIR, folder));
 });
 
@@ -98,7 +92,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // === FRONTEND STATIC ===
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
 // Read index.html template once and reuse (fast and simple)
 const indexPath = path.join(__dirname, "public", "index.html");
