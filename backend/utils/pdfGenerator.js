@@ -121,24 +121,26 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
             try {
               let qrBuffer = null;
               
+              // QR codes must be square - use the smaller dimension
+              const qrSize = Math.min(fieldWidth, fieldHeight);
+              
               // Check if this is the signature authority QR and we have an official QR
               if (field.field === "signature_authority" && eventData.official_qr_path) {
                 // Use the official's QR code image
                 const qrPath = path.join(__dirname, "..", eventData.official_qr_path);
                 if (fs.existsSync(qrPath)) {
-                  // Calculate position based on textAlign
+                  // Calculate position based on textAlign to match text rendering
                   let qrX = xPos;
                   if (field.textAlign === "center") {
-                    qrX = xPos - fieldWidth / 2;
+                    qrX = xPos - qrSize / 2;
                   } else if (field.textAlign === "right") {
-                    qrX = xPos - fieldWidth;
+                    qrX = xPos - qrSize;
                   }
                   
-                  // Add QR image to PDF
+                  // Add QR image to PDF as perfect square
                   doc.image(qrPath, qrX, yPos, {
-                    width: fieldWidth,
-                    height: fieldHeight,
-                    fit: [fieldWidth, fieldHeight],
+                    width: qrSize,
+                    height: qrSize,
                   });
                   continue; // Skip to next field
                 }
@@ -147,27 +149,27 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
               // For other QR codes (validation, etc.), generate dynamically
               const qrData = getDynamicValue(field.field);
               if (qrData) {
-                // Generate QR code as buffer
+                // Generate QR code as buffer with exact size to avoid scaling artifacts
+                // margin: 0 to ensure QR fills entire box without internal padding
                 const qrBuffer = await QRCode.toBuffer(qrData, {
                   errorCorrectionLevel: "H",
                   type: "png",
-                  width: 200,
-                  margin: 1,
+                  width: 400,
+                  margin: 0,
                 });
 
-                // Calculate position based on textAlign
+                // Calculate position based on textAlign to match text rendering
                 let qrX = xPos;
                 if (field.textAlign === "center") {
-                  qrX = xPos - fieldWidth / 2;
+                  qrX = xPos - qrSize / 2;
                 } else if (field.textAlign === "right") {
-                  qrX = xPos - fieldWidth;
+                  qrX = xPos - qrSize;
                 }
 
-                // Add QR image to PDF
+                // Add QR image to PDF as perfect square
                 doc.image(qrBuffer, qrX, yPos, {
-                  width: fieldWidth,
-                  height: fieldHeight,
-                  fit: [fieldWidth, fieldHeight],
+                  width: qrSize,
+                  height: qrSize,
                 });
               }
             } catch (err) {

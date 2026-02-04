@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, Link, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 
 import SplashScreen from "../components/SplashScreen";
 import ListEvents from "./admin/ListEvents";
@@ -13,7 +13,12 @@ import "../index.css";
 
 const AdminPage = () => {
   const navigate = useNavigate();
-  const [showSplash, setShowSplash] = useState(true);
+  const location = useLocation();
+  
+  // Check if navigating back from attendance list (skip splash)
+  const skipSplash = location.state?.skipSplash === true;
+  
+  const [showSplash, setShowSplash] = useState(!skipSplash);
   
   // Check if splash has been seen this session for faster duration
   const hasSeenSplash = sessionStorage.getItem('adminSplashSeen');
