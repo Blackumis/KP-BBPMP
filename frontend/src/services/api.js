@@ -268,4 +268,10 @@ export const officialsAPI = {
   delete: async (id) => fetchWithAuth(`/officials/${id}`, { method: "DELETE" }),
 };
 
-export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, kopSurat: kopSuratAPI, certificate: certificateAPI, templates: templatesAPI, officials: officialsAPI };
+export const settingsAPI = {
+  getSmtp: async () => fetchWithAuth("/settings/smtp"),
+  updateSmtp: async (settings) => fetchWithAuth("/settings/smtp", { method: "PUT", body: JSON.stringify(settings) }),
+  testSmtp: async (settings) => fetchWithAuth("/settings/smtp/test", { method: "POST", body: JSON.stringify(settings) }),
+};
+
+export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, kopSurat: kopSuratAPI, certificate: certificateAPI, templates: templatesAPI, officials: officialsAPI, settings: settingsAPI };
