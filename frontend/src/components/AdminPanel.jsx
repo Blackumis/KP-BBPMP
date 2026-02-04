@@ -5,7 +5,17 @@ import { showNotification } from "./Notification";
 
 const formatDate = (value) => {
   if (!value) return "";
-  return value.split("T")[0];
+
+  if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    return value;
+  }
+
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 };
 
 const formatDateTimeLocal = (value) => {
@@ -136,7 +146,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
   useEffect(() => {
     // Revoke object URL when templatePreview changes or component unmounts
     return () => {
-      if (formData.templatePreview && formData.templatePreview.startsWith('blob:')) {
+      if (formData.templatePreview && formData.templatePreview.startsWith("blob:")) {
         try {
           URL.revokeObjectURL(formData.templatePreview);
           console.log("Revoked template preview on cleanup", formData.templatePreview);
@@ -182,7 +192,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       nomor_surat: editEvent.nomor_surat || prev.nomor_surat,
       nama_kegiatan: editEvent.nama_kegiatan || prev.nama_kegiatan,
       tanggal_mulai: formatDate(editEvent.tanggal_mulai),
-      tanggal_selesai: formatDate(editEvent.tanggal_selesai),
+      tanggal_selesai: formatDate(editEvent.tanggal_selesai) || formatDate(editEvent.tanggal_mulai),
       batas_waktu_absensi: formatDateTimeLocal(editEvent.batas_waktu_absensi),
       jam_mulai: editEvent.jam_mulai || prev.jam_mulai,
       jam_selesai: editEvent.jam_selesai || prev.jam_selesai,
@@ -300,10 +310,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
           {editEvent ? "Edit Kegiatan" : "Konfigurasi Kegiatan"}
         </h2>
         {onBack && (
-          <button 
-            onClick={onBack} 
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200"
-          >
+          <button onClick={onBack} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200">
             Kembali
           </button>
         )}
@@ -426,11 +433,9 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                   required
                 />
               </div>
-              
+
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Pejabat Penandatangan
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Pejabat Penandatangan</label>
                 <select
                   name="official_id"
                   value={formData.official_id}
@@ -444,24 +449,20 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Pilih pejabat yang akan menandatangani sertifikat. QR code tanda tangan akan ditambahkan secara otomatis pada sertifikat.
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Pilih pejabat yang akan menandatangani sertifikat. QR code tanda tangan akan ditambahkan secara otomatis pada sertifikat.</p>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Template / Background Sertifikat</label>
-              
+
               {/* Source Toggle - Styled like tabs */}
               <div className="flex mb-4">
                 <button
                   type="button"
                   onClick={() => setFormData((prev) => ({ ...prev, templateSource: "upload", templateId: null }))}
                   className={`flex-1 py-3 px-4 text-sm font-semibold transition-all border-b-4 ${
-                    formData.templateSource === "upload"
-                      ? "border-blue-600 text-blue-700 bg-blue-50"
-                      : "border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                    formData.templateSource === "upload" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -475,14 +476,17 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                   type="button"
                   onClick={() => setFormData((prev) => ({ ...prev, templateSource: "template", templateFile: null }))}
                   className={`flex-1 py-3 px-4 text-sm font-semibold transition-all border-b-4 ${
-                    formData.templateSource === "template"
-                      ? "border-blue-600 text-blue-700 bg-blue-50"
-                      : "border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                    formData.templateSource === "template" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <div className="flex items-center justify-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                      />
                     </svg>
                     Pilih Template
                   </div>
@@ -499,7 +503,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                       const file = e.target.files[0];
                       if (file) {
                         setFormData((prev) => {
-                          if (prev.templatePreview && prev.templatePreview.startsWith('blob:')) {
+                          if (prev.templatePreview && prev.templatePreview.startsWith("blob:")) {
                             try {
                               URL.revokeObjectURL(prev.templatePreview);
                             } catch (err) {
@@ -536,7 +540,12 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     <div className="flex flex-col items-center pointer-events-none">
                       <div className="h-12 w-12 text-gray-400 mb-2">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          ></path>
                         </svg>
                       </div>
                       <p className="text-sm text-gray-600 font-medium">Klik untuk upload gambar sertifikat</p>
@@ -561,7 +570,12 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     <div className="text-center py-10 border border-gray-200 rounded-lg bg-gray-50">
                       <div className="h-16 w-16 mx-auto mb-4 text-gray-300">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.5"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                          />
                         </svg>
                       </div>
                       <p className="text-gray-500 mb-4">Belum ada template tersimpan</p>
@@ -584,12 +598,10 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                             <div
                               key={template.id}
                               className={`relative cursor-pointer rounded-lg overflow-hidden transition-all shadow-sm hover:shadow-md group ${
-                                isSelected 
-                                  ? "ring-2 ring-blue-500 ring-offset-2 bg-white" 
-                                  : "bg-white border border-gray-200 hover:border-blue-300"
+                                isSelected ? "ring-2 ring-blue-500 ring-offset-2 bg-white" : "bg-white border border-gray-200 hover:border-blue-300"
                               }`}
                             >
-                              <div 
+                              <div
                                 onClick={() => {
                                   setFormData((prev) => ({
                                     ...prev,
@@ -606,14 +618,18 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                                   <div className="absolute inset-0 bg-blue-600/20 flex items-center justify-center">
                                     <div className="bg-blue-600 text-white rounded-full p-1.5">
                                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                          clipRule="evenodd"
+                                        />
                                       </svg>
                                     </div>
                                   </div>
                                 )}
                               </div>
                               <div className="p-2 border-t border-gray-100 flex items-center justify-between">
-                                <p 
+                                <p
                                   onClick={() => {
                                     setFormData((prev) => ({
                                       ...prev,
@@ -637,7 +653,12 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                                   title="Hapus template"
                                 >
                                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
                                   </svg>
                                 </button>
                               </div>
@@ -663,7 +684,11 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
               {formData.templateName && formData.templateSource === "upload" && (
                 <p className="text-xs text-green-600 mt-3 flex items-center bg-green-50 px-3 py-2 rounded-md">
                   <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   File terpilih: {formData.templateName}
                 </p>
@@ -671,7 +696,11 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
               {formData.templateId && formData.templateSource === "template" && (
                 <p className="text-xs text-green-600 mt-3 flex items-center bg-green-50 px-3 py-2 rounded-md">
                   <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   Template dipilih: {formData.templateName}
                 </p>
@@ -761,7 +790,12 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded">
                 <div className="flex items-center">
                   <svg className="w-6 h-6 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
                   </svg>
                   <div>
                     <h3 className="font-bold text-yellow-800 mb-1">Template Belum Dipilih</h3>
@@ -808,10 +842,10 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
               notification.type === "success"
                 ? "bg-green-50 border-green-200 text-green-800"
                 : notification.type === "error"
-                ? "bg-red-50 border-red-200 text-red-800"
-                : notification.type === "warning"
-                ? "bg-yellow-50 border-yellow-200 text-yellow-800"
-                : "bg-blue-50 border-blue-200 text-blue-800"
+                  ? "bg-red-50 border-red-200 text-red-800"
+                  : notification.type === "warning"
+                    ? "bg-yellow-50 border-yellow-200 text-yellow-800"
+                    : "bg-blue-50 border-blue-200 text-blue-800"
             }`}
           >
             {notification.type === "success" && (
@@ -821,12 +855,20 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
             )}
             {notification.type === "error" && (
               <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
               </svg>
             )}
             {notification.type === "warning" && (
               <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
             )}
             {notification.type === "info" && (
@@ -835,12 +877,13 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
               </svg>
             )}
             <span className="font-medium text-sm">{notification.message}</span>
-            <button
-              onClick={() => setNotification(null)}
-              className="ml-2 text-gray-400 hover:text-gray-600 transition"
-            >
+            <button onClick={() => setNotification(null)} className="ml-2 text-gray-400 hover:text-gray-600 transition">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
               </svg>
             </button>
           </div>
@@ -855,7 +898,12 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
               <div className="flex items-center mb-4">
                 <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mr-3">
                   <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
                   </svg>
                 </div>
                 <h3 className="text-lg font-bold text-gray-800">Hapus Template</h3>
@@ -863,9 +911,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
               <p className="text-gray-600 mb-2">
                 Apakah Anda yakin ingin menghapus template <strong>"{deleteConfirm.template?.name}"</strong>?
               </p>
-              <p className="text-sm text-gray-500 mb-4">
-                Tindakan ini tidak dapat dibatalkan.
-              </p>
+              <p className="text-sm text-gray-500 mb-4">Tindakan ini tidak dapat dibatalkan.</p>
             </div>
             <div className="flex justify-end gap-3 p-4 bg-gray-50 rounded-b-lg border-t">
               <button
@@ -893,7 +939,12 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                 ) : (
                   <>
                     <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
                     </svg>
                     Hapus
                   </>
@@ -981,7 +1032,12 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     <div className="text-center py-6">
                       <div className="h-12 w-12 mx-auto mb-3 text-gray-400 group-hover:text-blue-500 transition">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.5"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          ></path>
                         </svg>
                       </div>
                       <p className="text-sm text-gray-600 font-medium">Klik untuk pilih gambar</p>
