@@ -187,7 +187,7 @@ const OfficialsManagement = () => {
                 <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
                 <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama</th>
                 <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Jabatan</th>
-                <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">QR Tanda Tangan</th>
+                <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanda Tangan</th>
                 <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                 <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
               </tr>
@@ -199,11 +199,11 @@ const OfficialsManagement = () => {
                   <td className="py-4 px-4 text-sm font-medium text-gray-900">{official.name}</td>
                   <td className="py-4 px-4 text-sm text-gray-500">{official.position}</td>
                   <td className="py-4 px-4 text-center">
-                    {official.signature_qr_path ? (
+                    {official.signature_image_path ? (
                       <img
-                        src={`${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"}${official.signature_qr_path}`}
-                        alt="QR Code"
-                        className="w-16 h-16 mx-auto rounded border border-gray-200"
+                        src={`${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"}${official.signature_image_path}`}
+                        alt="Tanda Tangan"
+                        className="w-20 h-12 mx-auto object-contain rounded border border-gray-200 bg-white"
                       />
                     ) : (
                       <span className="text-gray-400 text-sm">Tidak ada</span>
@@ -362,7 +362,7 @@ const OfficialsManagement = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                   </svg>
-                  QR code akan otomatis di-generate dari gambar tanda tangan
+                  Tanda tangan akan ditampilkan pada sertifikat
                 </p>
               </div>
 
