@@ -67,8 +67,8 @@ export default function App() {
         }
       />
 
-      {/* Public route without MainLayout - Isolated attendance page */}
-      <Route path="/attendance/:id/:name" element={<AttendancePage />} />
+      {/* Public route without MainLayout - Isolated attendance page (token-based) */}
+      <Route path="/attendance/:token" element={<AttendancePage />} />
 
       {/* Protected routes (with layout) */}
       <Route
@@ -125,7 +125,7 @@ export default function App() {
         }
       />
 
-      {/* Home/Root - redirects to login or daftarkegiatan */}
+      {/* Home/Root - redirects to login*/}
       <Route
         path="/"
         element={

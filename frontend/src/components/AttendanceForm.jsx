@@ -467,7 +467,7 @@ const AttendanceForm = ({ eventId }) => {
 
   if (submitted) {
     return (
-      <div className="max-w-xl mx-auto bg-white p-8 rounded-xl shadow-xl text-center my-12 border-t-8 border-green-600">
+      <div className="max-w-sm sm:max-w-md lg:max-w-xl mx-auto bg-white p-8 rounded-xl shadow-xl text-center my-12 border-t-8 border-green-600">
         {/* Icon */}
         <div className="h-20 w-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-5">
           <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -498,7 +498,7 @@ const AttendanceForm = ({ eventId }) => {
         {/* Warning */}
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
           <p className="text-xs text-yellow-800 flex items-center gap-2 justify-center">
-            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"

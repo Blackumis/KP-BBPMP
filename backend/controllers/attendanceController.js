@@ -1,16 +1,52 @@
 import pool from "../config/database.js";
 import { body, validationResult } from "express-validator";
+import { verifyAttendanceToken, generateAttendanceToken } from "../utils/attendanceToken.js";
+
+// Admin: generate a stateless attendance token for an activity
+export const generateAttendanceTokenHandler = async (req, res) => {
+  try {
+    const { event_id } = req.params;
+    // Check event exists
+    const [events] = await pool.query("SELECT id, status FROM kegiatan WHERE id = ?", [event_id]);
+    if (events.length === 0) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+    // Only active events can have tokens
+    if (events[0].status !== "active") {
+      return res.status(403).json({ success: false, message: "Event is not active" });
+    }
+
+    const token = generateAttendanceToken(event_id);
+    res.json({ success: true, token });
+  } catch (err) {
+    console.error("Generate attendance token error:", err);
+    // Provide a clearer message when secret is not configured
+    if (err && err.message && err.message.includes("ATTENDANCE_JWT_SECRET")) {
+      return res.status(500).json({ success: false, message: "Server misconfiguration: ATTENDANCE_JWT_SECRET is not set" });
+    }
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
 // Get event form (public - for users to see the form)
 export const getEventForm = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { token } = req.params;
+
+    let decoded;
+    try {
+      decoded = verifyAttendanceToken(token);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: "Invalid attendance token" });
+    }
+
+    const activity_id = decoded.activity_id;
 
     const [events] = await pool.query(
       `SELECT id, nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, 
               jam_mulai, jam_selesai, batas_waktu_absensi, form_config, status
        FROM kegiatan WHERE id = ? AND status = 'active'`,
-      [id]
+      [activity_id],
     );
 
     if (events.length === 0) {
@@ -49,14 +85,23 @@ export const getEventForm = async (req, res) => {
 // Submit attendance (public - for users)
 export const submitAttendance = async (req, res) => {
   try {
-    const { event_id } = req.params;
+    const { token } = req.params;
     const { nama_lengkap, unit_kerja, nip, provinsi, kabupaten_kota, tanggal_lahir, nomor_hp, pangkat_golongan, jabatan, email, email_konfirmasi, pernyataan } = req.body;
+
+    let decoded;
+    try {
+      decoded = verifyAttendanceToken(token);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: "Invalid attendance token" });
+    }
+
+    const event_id = decoded.activity_id;
 
     // If a file was uploaded under 'signature', build the public URL and use that
     let signature_url = null;
     if (req.file) {
       // Extract relative path from the full file path (includes event subfolder)
-      const relativePath = req.file.path.split('uploads').pop();
+      const relativePath = req.file.path.split("uploads").pop();
       signature_url = `${req.protocol}://${req.get("host")}/uploads${relativePath}`;
     } else if (req.body.signature_url) {
       // Fallback for legacy clients that send a URL in the body
@@ -138,14 +183,14 @@ export const submitAttendance = async (req, res) => {
     const urutan_absensi = countResult[0].count + 1;
 
     // Generate certificate number format: urutan/nomor_surat with 4-digit padding (0001, 0002, etc.)
-    const paddedUrutan = String(urutan_absensi).padStart(4, '0');
+    const paddedUrutan = String(urutan_absensi).padStart(4, "0");
     const nomor_sertifikat = `${paddedUrutan}/${events[0].nomor_surat}`;
 
     // Sanitize optional fields - convert empty strings or "-" to null
-    const sanitizedNIP = nip && nip.trim() !== '' && nip.trim() !== '-' ? nip.trim() : null;
-    const sanitizedPangkat = pangkat_golongan && pangkat_golongan.trim() !== '' && pangkat_golongan.trim() !== '-' ? pangkat_golongan.trim() : null;
-    const sanitizedJabatan = jabatan && jabatan.trim() !== '' && jabatan.trim() !== '-' ? jabatan.trim() : null;
-    const sanitizedTanggalLahir = tanggal_lahir && tanggal_lahir.trim() !== '' ? tanggal_lahir : null;
+    const sanitizedNIP = nip && nip.trim() !== "" && nip.trim() !== "-" ? nip.trim() : null;
+    const sanitizedPangkat = pangkat_golongan && pangkat_golongan.trim() !== "" && pangkat_golongan.trim() !== "-" ? pangkat_golongan.trim() : null;
+    const sanitizedJabatan = jabatan && jabatan.trim() !== "" && jabatan.trim() !== "-" ? jabatan.trim() : null;
+    const sanitizedTanggalLahir = tanggal_lahir && tanggal_lahir.trim() !== "" ? tanggal_lahir : null;
 
     // Insert attendance
     const [result] = await pool.query(
@@ -153,7 +198,22 @@ export const submitAttendance = async (req, res) => {
        (event_id, nama_lengkap, unit_kerja, nip, provinsi, kabupaten_kota, tanggal_lahir,
         nomor_hp, pangkat_golongan, jabatan, email, signature_url, urutan_absensi, nomor_sertifikat)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [event_id, nama_lengkap, unit_kerja, sanitizedNIP, provinsi, kabupaten_kota, sanitizedTanggalLahir, nomor_hp, sanitizedPangkat, sanitizedJabatan, email, signature_url, urutan_absensi, nomor_sertifikat]
+      [
+        event_id,
+        nama_lengkap,
+        unit_kerja,
+        sanitizedNIP,
+        provinsi,
+        kabupaten_kota,
+        sanitizedTanggalLahir,
+        nomor_hp,
+        sanitizedPangkat,
+        sanitizedJabatan,
+        email,
+        signature_url,
+        urutan_absensi,
+        nomor_sertifikat,
+      ],
     );
 
     res.status(201).json({
@@ -275,7 +335,7 @@ export const updateAttendance = async (req, res) => {
        nama_lengkap = ?, unit_kerja = ?, nip = ?, provinsi = ?, kabupaten_kota = ?,
        tanggal_lahir = ?, nomor_hp = ?, pangkat_golongan = ?, jabatan = ?, email = ?
        WHERE id = ?`,
-      [nama_lengkap, unit_kerja, nip, provinsi, kabupaten_kota, tanggal_lahir, nomor_hp, pangkat_golongan, jabatan, email, id]
+      [nama_lengkap, unit_kerja, nip, provinsi, kabupaten_kota, tanggal_lahir, nomor_hp, pangkat_golongan, jabatan, email, id],
     );
 
     res.json({

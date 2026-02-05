@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { eventsAPI } from "../../services/api";
+import { eventsAPI, attendanceAPI } from "../../services/api";
 import { showNotification } from "../../components/Notification";
 import { useMemo } from "react";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -127,6 +127,49 @@ const ListEvents = () => {
         }
       },
     });
+  };
+
+  const [loadingTokenFor, setLoadingTokenFor] = useState(null);
+
+  const generateAndCopyLink = async (eventId) => {
+    setLoadingTokenFor(eventId);
+    try {
+      const res = await attendanceAPI.generateToken(eventId);
+      if (res.success && res.token) {
+        const shareUrl = `${window.location.origin}/attendance/${res.token}`;
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          showNotification("Link berhasil disalin ke clipboard!", "success");
+        } catch (_err) {
+          prompt("Salin link berikut:", shareUrl);
+        }
+      } else {
+        showNotification(res.message || "Gagal membuat token link", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message || "Gagal membuat token link", "error");
+    } finally {
+      setLoadingTokenFor(null);
+    }
+  };
+
+  const generateAndOpenForm = async (eventId) => {
+    setLoadingTokenFor(eventId);
+    try {
+      const res = await attendanceAPI.generateToken(eventId);
+      if (res.success && res.token) {
+        const url = `${window.location.origin}/attendance/${res.token}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        showNotification(res.message || "Gagal membuat token link", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message || "Gagal membuat token link", "error");
+    } finally {
+      setLoadingTokenFor(null);
+    }
   };
 
   const getStatusBadge = (event) => {
@@ -320,35 +363,32 @@ const ListEvents = () => {
                           {event.status === "active" && (
                             <>
                               <button
-                                onClick={() => {
-                                  const shareUrl = `${window.location.origin}/attendance/${event.id}/${encodeURIComponent(event.nama_kegiatan)}`;
-                                  navigator.clipboard
-                                    .writeText(shareUrl)
-                                    .then(() => {
-                                      showNotification("Link berhasil disalin ke clipboard!", "success");
-                                    })
-                                    .catch(() => {
-                                      prompt("Salin link berikut:", shareUrl);
-                                    });
-                                }}
+                                onClick={() => generateAndCopyLink(event.id)}
                                 className="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-full hover:bg-cyan-200"
                                 title="Salin Link Absensi"
+                                disabled={loadingTokenFor === event.id}
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                                  />
-                                </svg>
+                                {loadingTokenFor === event.id ? (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.25" />
+                                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" />
+                                  </svg>
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                                    />
+                                  </svg>
+                                )}
                               </button>
-                              <a
-                                href={`/attendance/${event.id}/${event.nama_kegiatan}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={() => generateAndOpenForm(event.id)}
                                 className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium hover:bg-green-200"
                                 title="Form"
+                                disabled={loadingTokenFor === event.id}
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path
@@ -359,7 +399,7 @@ const ListEvents = () => {
                                   />
                                 </svg>
                                 Form
-                              </a>
+                              </button>
                               <Link
                                 to={`/admin/edit/${event.id}`}
                                 className="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium hover:bg-yellow-200"
