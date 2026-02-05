@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DaftarKegiatan from "../components/DaftarKegiatan";
-import { eventsAPI } from "../services/api";
+import { eventsAPI, attendanceAPI, authAPI } from "../services/api";
 import { showNotification } from "../components/Notification";
 import "../index.css";
 
@@ -26,8 +26,25 @@ const DaftarKegiatanPage = () => {
   }, []);
 
   const onViewAbsensi = (k) => {
-    // Navigate to public attendance page
-    navigate(`/attendance/${k.id}`);
+    // If the user is authenticated (admin), generate a token and navigate.
+    if (authAPI.isAuthenticated()) {
+      (async () => {
+        try {
+          const res = await attendanceAPI.generateToken(k.id);
+          if (res.success && res.token) {
+            navigate(`/attendance/${res.token}`);
+          } else {
+            showNotification(res.message || "Gagal membuat token link", "error");
+          }
+        } catch (err) {
+          console.error(err);
+          showNotification(err.message || "Gagal membuat token link", "error");
+        }
+      })();
+    } else {
+      // For public users, the event organizer/admin should provide an attendance link (token).
+      showNotification("Silakan minta link absensi dari penyelenggara/kepala kegiatan.", "info");
+    }
   };
 
   return (

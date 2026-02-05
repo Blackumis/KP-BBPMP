@@ -134,6 +134,10 @@ export const attendanceAPI = {
     if (!response.ok) throw new Error(data.message || "Failed to load form");
     return data;
   },
+  generateToken: async (eventId) => {
+    // Admin-only: generate an opaque attendance token for public links
+    return fetchWithAuth(`/attendance/generate-token/${eventId}`);
+  },
   submit: async (eventId, attendanceData) => {
     // Support sending FormData (multipart/form-data) or JSON
     let opts;
@@ -213,7 +217,6 @@ export const kopSuratAPI = {
 
   delete: async (id) => fetchWithAuth(`/kop-surat/${id}`, { method: "DELETE" }),
 
-  // 🔥 INI YANG TADI HILANG
   activate: async (id) => fetchWithAuth(`/kop-surat/${id}/activate`, { method: "PATCH" }),
 
   deactivate: async (id) => fetchWithAuth(`/kop-surat/${id}/deactivate`, { method: "PATCH" }),

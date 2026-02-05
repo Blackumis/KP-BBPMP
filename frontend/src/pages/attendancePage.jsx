@@ -3,10 +3,10 @@ import "../index.css";
 import { useParams, useNavigate } from "react-router-dom";
 
 const AttendancePage = () => {
-  const { id } = useParams();
+  const { token } = useParams();
   const navigate = useNavigate();
 
-  return <PublicAttendancePage eventId={id} />;
+  return <PublicAttendancePage eventId={token} />;
 };
 
 export default AttendancePage;
