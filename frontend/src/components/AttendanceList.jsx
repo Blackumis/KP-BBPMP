@@ -18,6 +18,7 @@ const AttendanceList = ({ event, onBack }) => {
     generateAll: false,
     sendAll: false,
     viewHistory: false,
+    generateReport: false,
   });
 
   const [confirmDialog, setConfirmDialog] = useState({
@@ -352,6 +353,7 @@ const AttendanceList = ({ event, onBack }) => {
 
   const handleGenerateAttendanceReport = async () => {
     try {
+      setEventLoading((prev) => ({ ...prev, generateReport: true }));
       const token = localStorage.getItem("token");
 
       const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance/events/${event.id}/attendance-report`, {
@@ -360,9 +362,17 @@ const AttendanceList = ({ event, onBack }) => {
         },
       });
 
-      if (!res.ok) throw new Error("Gagal download laporan");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Gagal download laporan");
+      }
 
       const blob = await res.blob();
+      
+      if (blob.size === 0) {
+        throw new Error("File PDF kosong");
+      }
+
       const url = window.URL.createObjectURL(blob);
 
       const a = document.createElement("a");
@@ -373,9 +383,12 @@ const AttendanceList = ({ event, onBack }) => {
       a.remove();
 
       window.URL.revokeObjectURL(url);
+      showNotification("Laporan berhasil diunduh", "success");
     } catch (err) {
       console.error(err);
       showNotification(err.message || "Gagal download laporan", "error");
+    } finally {
+      setEventLoading((prev) => ({ ...prev, generateReport: false }));
     }
   };
 

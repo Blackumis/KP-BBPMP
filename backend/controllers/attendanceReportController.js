@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs";
 import pool from "../config/database.js";
 import { generateAttendanceReport } from "../utils/pdfGenerator.js";
 
@@ -62,21 +63,37 @@ export const generateEventAttendanceReport = async (req, res) => {
     // Tunggu sedikit untuk memastikan file benar-benar siap
     await new Promise((resolve) => setTimeout(resolve, 100));
 
+    // Verify the file exists and is readable
+    if (!fs.existsSync(result.filepath)) {
+      throw new Error("Generated PDF file not found");
+    }
+
+    const stats = fs.statSync(result.filepath);
+    if (stats.size === 0) {
+      throw new Error("Generated PDF file is empty");
+    }
+
     const safeEventTitle = eventTitle.replace(/[<>:"/\\|?*]+/g, "").trim();
     const downloadName = `Laporan Absensi - ${safeEventTitle} (${eventDate}).pdf`;
 
-    // Kirim file
-    res.download(result.filepath, downloadName, (err) => {
-      if (err) {
-        console.error("Download error:", err);
-        if (!res.headersSent) {
-          res.status(500).json({
-            success: false,
-            message: "Failed to download PDF",
-          });
-        }
+    // Set proper headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(downloadName)}"`);
+    res.setHeader('Content-Length', stats.size);
+
+    // Stream the file instead of using res.download
+    const fileStream = fs.createReadStream(result.filepath);
+    fileStream.on('error', (err) => {
+      console.error("File stream error:", err);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to stream PDF file",
+        });
       }
     });
+    
+    fileStream.pipe(res);
   } catch (err) {
     console.error("Controller error:", err);
     if (!res.headersSent) {

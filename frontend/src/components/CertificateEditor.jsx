@@ -184,8 +184,8 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
     if (config?.official_id && config.official_id !== "") {
       defaultFields.push({
         id: "qr_signature",
-        label: "QR TTD Atasan",
-        type: "qr",
+        label: "TTD Atasan",
+        type: "image",
         field: "signature_authority",
         x: 50,
         y: 82,
@@ -243,8 +243,8 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
           // Add QR signature if it should exist but doesn't
           return [...prevFields, {
             id: "qr_signature",
-            label: "QR TTD Atasan",
-            type: "qr",
+            label: "TTD Atasan",
+            type: "image",
             field: "signature_authority",
             x: 50,
             y: 85,
@@ -358,8 +358,8 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
             let newX = f.x;
             let newY = f.y;
 
-            // For QR fields, maintain square aspect ratio
-            const isQRField = f.type === "qr";
+            // For QR fields and image fields, maintain square aspect ratio
+            const isQRField = f.type === "qr" || f.type === "image";
 
             if (isQRField) {
               // For QR, use the larger absolute delta to maintain square
@@ -503,6 +503,8 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
       return placeholders[field.field] || `[${field.field}]`;
     } else if (field.type === "qr") {
       return "QR";
+    } else if (field.type === "image") {
+      return "IMG";
     }
     return "";
   };
@@ -564,9 +566,9 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
             >
               {fields.map((field) => {
                 const isSelected = selectedFields.includes(field.id);
-                const isQR = field.type === "qr";
+                const isQR = field.type === "qr" || field.type === "image";
 
-                // For QR codes, ensure square aspect ratio (use smaller dimension)
+                // For QR codes and images, ensure square aspect ratio (use smaller dimension)
                 let displayWidth = field.width;
                 let displayHeight = field.height;
                 if (isQR) {
@@ -718,7 +720,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                   </div>
                 )}
 
-                {selectedFieldData.type !== "qr" && (
+                {selectedFieldData.type !== "qr" && selectedFieldData.type !== "image" && (
                   <>
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Font Family</label>
@@ -849,7 +851,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">{selectedFieldData.type === "qr" ? "Width (%)" : "Width (%)"}</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{(selectedFieldData.type === "qr" || selectedFieldData.type === "image") ? "Width (%)" : "Width (%)"}</label>
                     <input
                       type="number"
                       min="5"
@@ -858,8 +860,8 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                       value={selectedFieldData.width.toFixed(1)}
                       onChange={(e) => {
                         const newWidth = parseFloat(e.target.value);
-                        if (selectedFieldData.type === "qr") {
-                          // For QR codes, keep width and height equal
+                        if (selectedFieldData.type === "qr" || selectedFieldData.type === "image") {
+                          // For QR codes and images, keep width and height equal
                           updateField(selectedFieldData.id, { width: newWidth, height: newWidth });
                         } else {
                           updateField(selectedFieldData.id, { width: newWidth });
@@ -869,7 +871,7 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">{selectedFieldData.type === "qr" ? "Height (%)" : "Height (%)"}</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">{(selectedFieldData.type === "qr" || selectedFieldData.type === "image") ? "Height (%)" : "Height (%)"}</label>
                     <input
                       type="number"
                       min="3"
@@ -878,15 +880,15 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                       value={selectedFieldData.height.toFixed(1)}
                       onChange={(e) => {
                         const newHeight = parseFloat(e.target.value);
-                        if (selectedFieldData.type === "qr") {
-                          // For QR codes, keep width and height equal
+                        if (selectedFieldData.type === "qr" || selectedFieldData.type === "image") {
+                          // For QR codes and images, keep width and height equal
                           updateField(selectedFieldData.id, { width: newHeight, height: newHeight });
                         } else {
                           updateField(selectedFieldData.id, { height: newHeight });
                         }
                       }}
                       className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      disabled={selectedFieldData.type === "qr"}
+                      disabled={selectedFieldData.type === "qr" || selectedFieldData.type === "image"}
                     />
                   </div>
                 </div>
@@ -964,9 +966,10 @@ const CertificateEditor = ({ templatePreview, onLayoutChange, initialLayout, for
                     <span className={`text-xs px-2 py-0.5 rounded ${
                       field.type === "dynamic" ? "bg-green-100 text-green-700" :
                       field.type === "qr" ? "bg-purple-100 text-purple-700" :
+                      field.type === "image" ? "bg-blue-100 text-blue-700" :
                       "bg-gray-100 text-gray-600"
                     }`}>
-                      {field.type === "dynamic" ? "Auto" : field.type === "qr" ? "QR" : "Static"}
+                      {field.type === "dynamic" ? "Auto" : field.type === "qr" ? "QR" : field.type === "image" ? "Img" : "Static"}
                     </span>
                   </div>
                 </button>

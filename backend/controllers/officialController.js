@@ -1,8 +1,8 @@
 import db from "../config/database.js";
-import QRCode from "qrcode";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { processSignatureImage } from "../utils/imageProcessor.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -102,42 +102,28 @@ export const createOfficial = async (req, res) => {
 
     // Handle signature image upload
     let signature_image_path = null;
-    let signature_qr_path = null;
 
     if (req.file) {
-      signature_image_path = `/uploads/pejabat/signatures/${req.file.filename}`;
-
-      // Generate QR code that links to official verification page
-      const qrFileName = `qr_${Date.now()}.png`;
-      const qrPath = path.join(__dirname, "../uploads/pejabat/qrcode", qrFileName);
-
-      // Create QR code containing URL to official verification page
-      const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/official/OFFICIAL_ID_PLACEHOLDER`;
-      await QRCode.toFile(qrPath, verificationUrl, {
-        width: 400,
-        margin: 0,
-        errorCorrectionLevel: "H",
-      });
-
-      signature_qr_path = `/uploads/pejabat/qrcode/${qrFileName}`;
+      const uploadedPath = path.join(__dirname, "../uploads/pejabat/signatures", req.file.filename);
+      
+      // Process the signature image (remove background if not QR code)
+      const processResult = await processSignatureImage(uploadedPath);
+      
+      if (processResult.success) {
+        signature_image_path = `/uploads/pejabat/signatures/${processResult.filename}`;
+        console.log(`Signature processed: QR=${processResult.isQRCode}, Background Removed=${processResult.backgroundRemoved}`);
+      } else {
+        // Fallback to original file if processing fails
+        signature_image_path = `/uploads/pejabat/signatures/${req.file.filename}`;
+        console.warn("Image processing failed, using original:", processResult.error);
+      }
     }
 
     const [result] = await db.query(
-      `INSERT INTO pejabat (name, position, signature_image_path, signature_qr_path, is_active, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [name, position, signature_image_path, signature_qr_path, is_active !== false, created_by]
+      `INSERT INTO pejabat (name, position, signature_image_path, is_active, created_by) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [name, position, signature_image_path, is_active !== false, created_by]
     );
-
-    // Update QR code with actual official ID
-    if (signature_qr_path) {
-      const actualVerificationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/official/${result.insertId}`;
-      const qrPath = path.join(__dirname, "..", signature_qr_path);
-      await QRCode.toFile(qrPath, actualVerificationUrl, {
-        width: 400,
-        margin: 0,
-        errorCorrectionLevel: "H",
-      });
-    }
 
     const [newOfficial] = await db.query(`SELECT * FROM pejabat WHERE id = ?`, [result.insertId]);
 
@@ -173,11 +159,10 @@ export const updateOfficial = async (req, res) => {
     }
 
     let signature_image_path = existing[0].signature_image_path;
-    let signature_qr_path = existing[0].signature_qr_path;
 
     // Handle new signature image upload
     if (req.file) {
-      // Delete old signature image and QR if they exist
+      // Delete old signature image if it exists
       if (existing[0].signature_image_path) {
         const oldImagePath = path.join(__dirname, "..", existing[0].signature_image_path);
         if (fs.existsSync(oldImagePath)) {
@@ -185,35 +170,25 @@ export const updateOfficial = async (req, res) => {
         }
       }
 
-      if (existing[0].signature_qr_path) {
-        const oldQRPath = path.join(__dirname, "..", existing[0].signature_qr_path);
-        if (fs.existsSync(oldQRPath)) {
-          fs.unlinkSync(oldQRPath);
-        }
+      // Process the signature image (remove background if not QR code)
+      const uploadedPath = path.join(__dirname, "../uploads/pejabat/signatures", req.file.filename);
+      const processResult = await processSignatureImage(uploadedPath);
+      
+      if (processResult.success) {
+        signature_image_path = `/uploads/pejabat/signatures/${processResult.filename}`;
+        console.log(`Signature updated: QR=${processResult.isQRCode}, Background Removed=${processResult.backgroundRemoved}`);
+      } else {
+        // Fallback to original file if processing fails
+        signature_image_path = `/uploads/pejabat/signatures/${req.file.filename}`;
+        console.warn("Image processing failed, using original:", processResult.error);
       }
-
-      // Save new signature image
-      signature_image_path = `/uploads/pejabat/signatures/${req.file.filename}`;
-
-      // Generate new QR code with URL to verification page
-      const qrFileName = `qr_${Date.now()}.png`;
-      const qrPath = path.join(__dirname, "../uploads/pejabat/qrcode", qrFileName);
-
-      const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/official/${id}`;
-      await QRCode.toFile(qrPath, verificationUrl, {
-        width: 400,
-        margin: 0,
-        errorCorrectionLevel: "H",
-      });
-
-      signature_qr_path = `/uploads/pejabat/qrcode/${qrFileName}`;
     }
 
     await db.query(
       `UPDATE pejabat 
-       SET name = ?, position = ?, signature_image_path = ?, signature_qr_path = ?, is_active = ? 
+       SET name = ?, position = ?, signature_image_path = ?, is_active = ? 
        WHERE id = ?`,
-      [name || existing[0].name, position || existing[0].position, signature_image_path, signature_qr_path, is_active !== false, id]
+      [name || existing[0].name, position || existing[0].position, signature_image_path, is_active !== false, id]
     );
 
     const [updatedOfficial] = await db.query(`SELECT * FROM pejabat WHERE id = ?`, [id]);
@@ -248,18 +223,11 @@ export const deleteOfficial = async (req, res) => {
       });
     }
 
-    // Delete signature image and QR code files
+    // Delete signature image file
     if (existing[0].signature_image_path) {
       const imagePath = path.join(__dirname, "..", existing[0].signature_image_path);
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
-      }
-    }
-
-    if (existing[0].signature_qr_path) {
-      const qrPath = path.join(__dirname, "..", existing[0].signature_qr_path);
-      if (fs.existsSync(qrPath)) {
-        fs.unlinkSync(qrPath);
       }
     }
 

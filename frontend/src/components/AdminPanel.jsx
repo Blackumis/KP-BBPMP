@@ -449,7 +449,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">Pilih pejabat yang akan menandatangani sertifikat. QR code tanda tangan akan ditambahkan secara otomatis pada sertifikat.</p>
+                <p className="text-xs text-gray-500 mt-1">Pilih pejabat yang akan menandatangani sertifikat. Tanda tangan akan ditambahkan secara otomatis pada sertifikat.</p>
               </div>
             </div>
 
