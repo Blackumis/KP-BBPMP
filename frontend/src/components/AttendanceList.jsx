@@ -32,7 +32,8 @@ const AttendanceList = ({ event, onBack }) => {
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 1000 });
+        // Fetch ALL attendances without limit
+        const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 'all' });
         if (response.success) {
           setAttendances(response.data.attendances || []);
         }
@@ -593,7 +594,8 @@ const AttendanceList = ({ event, onBack }) => {
             <div className="text-sm text-gray-500">
               Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, attendances.length)} dari {attendances.length} peserta
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center flex-wrap justify-center">
+              {/* Previous Button */}
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
@@ -604,15 +606,52 @@ const AttendanceList = ({ event, onBack }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              {Array.from({ length: Math.ceil(attendances.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 text-sm font-medium rounded-md ${currentPage === page ? 'bg-blue-600 text-white' : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'}`}
-                >
-                  {page}
-                </button>
-              ))}
+              
+              {/* Smart Pagination with ellipsis */}
+              {(() => {
+                const totalPages = Math.ceil(attendances.length / itemsPerPage);
+                const pageNumbers = [];
+                const maxVisible = 7; // Show max 7 page numbers
+                
+                if (totalPages <= maxVisible) {
+                  // Show all pages if total is small
+                  for (let i = 1; i <= totalPages; i++) {
+                    pageNumbers.push(i);
+                  }
+                } else {
+                  // Smart pagination with ellipsis
+                  if (currentPage <= 4) {
+                    // Near start: 1 2 3 4 5 ... last
+                    pageNumbers.push(1, 2, 3, 4, 5, '...', totalPages);
+                  } else if (currentPage >= totalPages - 3) {
+                    // Near end: 1 ... N-4 N-3 N-2 N-1 N
+                    pageNumbers.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                  } else {
+                    // Middle: 1 ... current-1 current current+1 ... last
+                    pageNumbers.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+                  }
+                }
+                
+                return pageNumbers.map((page, index) => (
+                  page === '...' ? (
+                    <span key={`ellipsis-${index}`} className="px-3 py-1 text-gray-500">...</span>
+                  ) : (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                        currentPage === page 
+                          ? 'bg-blue-600 text-white' 
+                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                ));
+              })()}
+              
+              {/* Next Button */}
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(attendances.length / itemsPerPage)))}
                 disabled={currentPage === Math.ceil(attendances.length / itemsPerPage)}

@@ -48,7 +48,7 @@ const ListEvents = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await eventsAPI.getAll({ limit: 1000 });
+        const res = await eventsAPI.getAll({ limit: 10000 });
         if (res.success) setEvents(res.data.events || []);
       } catch (err) {
         console.error(err);
@@ -70,7 +70,7 @@ const ListEvents = () => {
   const handleRefresh = async () => {
     setLoading(true);
     try {
-      const res = await eventsAPI.getAll({ limit: 1000 });
+      const res = await eventsAPI.getAll({ limit: 10000 });
       if (res.success) {
         setEvents(res.data.events || []);
         showNotification("Data berhasil dimuat ulang", "success");

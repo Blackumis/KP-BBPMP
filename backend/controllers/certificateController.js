@@ -1,6 +1,7 @@
 import pool from '../config/database.js';
 import { generateCertificate } from '../utils/pdfGenerator.js';
 import { sendCertificateEmail } from '../utils/emailService.js';
+import { certificateQueue, emailQueue } from '../config/simpleQueue.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -135,55 +136,34 @@ export const generateEventCertificates = async (req, res) => {
       });
     }
 
-    const results = [];
-    const errors = [];
-
-    // Generate certificate for each attendance
+    // Add jobs to queue
+    const jobs = [];
     for (const attendance of attendances) {
-      try {
-        const result = await generateCertificate(
-          attendance,
-          {
-            nama_kegiatan: event.nama_kegiatan,
-            tanggal_mulai: event.tanggal_mulai,
-            tanggal_selesai: event.tanggal_selesai,
-            certificate_layout: certificateLayout,
-            official_signature_path: event.official_signature_path
-          },
-          event.template_sertifikat
-        );
-
-        if (result.success) {
-          // Update attendance record
-          await pool.query(
-            'UPDATE presensi SET certificate_path = ? WHERE id = ?',
-            [result.filepath, attendance.id]
-          );
-
-          results.push({
-            attendance_id: attendance.id,
-            nama: attendance.nama_lengkap,
-            certificate_path: result.filepath
-          });
+      const job = await certificateQueue.add({
+        attendance_id: attendance.id,
+        event_data: {
+          nama_kegiatan: event.nama_kegiatan,
+          tanggal_mulai: event.tanggal_mulai,
+          tanggal_selesai: event.tanggal_selesai,
+          certificate_layout: certificateLayout,
+          official_qr_path: event.official_qr_path,
+          official_signature_path: event.official_signature_path,
+          template_sertifikat: event.template_sertifikat
         }
-      } catch (err) {
-        errors.push({
-          attendance_id: attendance.id,
-          nama: attendance.nama_lengkap,
-          error: err.message
-        });
-      }
+      });
+      jobs.push(job);
     }
 
     res.json({
       success: true,
-      message: `Generated ${results.length} certificates`,
+      message: `Added ${jobs.length} certificate generation jobs to queue`,
       data: {
         total: attendances.length,
-        success: results.length,
-        failed: errors.length,
-        results,
-        errors
+        queued: jobs.length,
+        queue_info: {
+          name: 'certificate-generation',
+          message: 'Jobs are being processed in the background. Check queue status for progress.'
+        }
       }
     });
 
@@ -191,7 +171,7 @@ export const generateEventCertificates = async (req, res) => {
     console.error('Generate event certificates error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to generate certificates'
+      message: 'Failed to queue certificate generation jobs'
     });
   }
 };
@@ -304,80 +284,26 @@ export const sendEventCertificates = async (req, res) => {
       });
     }
 
-    const results = [];
-    const errors = [];
-
-    // Send certificate for each attendance
+    // Add jobs to email queue
+    const jobs = [];
     for (const attendance of attendances) {
-      try {
-        const subject = `Sertifikat - ${attendance.nama_kegiatan}`;
-        const html = `
-          <h2>Sertifikat Kegiatan</h2>
-          <p>Kepada Yth. ${attendance.nama_lengkap},</p>
-          <p>Terlampir sertifikat untuk kegiatan <strong>${attendance.nama_kegiatan}</strong>.</p>
-          <p>Nomor Sertifikat: <strong>${attendance.nomor_sertifikat}</strong></p>
-          <br>
-          <p>Terima kasih atas partisipasi Anda.</p>
-          <br>
-          <p>Salam,<br>Tim KP BBPMP</p>
-        `;
-
-        const certificatePath = path.join(__dirname, '..', attendance.certificate_path);
-
-        const emailResult = await sendCertificateEmail(
-          attendance.email,
-          subject,
-          html,
-          [
-            {
-              filename: `Sertifikat-${attendance.nama_lengkap}.pdf`,
-              path: certificatePath
-            }
-          ]
-        );
-
-        if (emailResult.success) {
-          // Update status
-          await pool.query(
-            'UPDATE presensi SET status = ?, sent_at = NOW() WHERE id = ?',
-            ['sertifikat_terkirim', attendance.id]
-          );
-
-          results.push({
-            attendance_id: attendance.id,
-            nama: attendance.nama_lengkap,
-            email: attendance.email
-          });
-        } else {
-          errors.push({
-            attendance_id: attendance.id,
-            nama: attendance.nama_lengkap,
-            email: attendance.email,
-            error: emailResult.error
-          });
-        }
-
-        // Add delay to avoid overwhelming the SMTP server
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-      } catch (err) {
-        errors.push({
-          attendance_id: attendance.id,
-          nama: attendance.nama_lengkap,
-          error: err.message
-        });
-      }
+      const job = await emailQueue.add({
+        attendance_id: attendance.id,
+        event_name: attendance.nama_kegiatan
+      });
+      jobs.push(job);
     }
 
     res.json({
       success: true,
-      message: `Sent ${results.length} certificates`,
+      message: `Added ${jobs.length} email sending jobs to queue`,
       data: {
         total: attendances.length,
-        success: results.length,
-        failed: errors.length,
-        results,
-        errors
+        queued: jobs.length,
+        queue_info: {
+          name: 'email-sending',
+          message: 'Emails are being sent in the background. Check queue status for progress.'
+        }
       }
     });
 
@@ -385,7 +311,7 @@ export const sendEventCertificates = async (req, res) => {
     console.error('Send event certificates error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to send certificates'
+      message: 'Failed to queue email sending jobs'
     });
   }
 };
@@ -599,5 +525,135 @@ export const downloadCertificate = async (req, res) => {
         message: 'Gagal mengunduh sertifikat'
       });
     }
+  }
+};
+
+// Get queue status for an event
+export const getQueueStatus = async (req, res) => {
+  try {
+    const { event_id } = req.params;
+
+    // Get certificate queue stats
+    const certWaiting = await certificateQueue.getWaiting();
+    const certActive = await certificateQueue.getActive();
+    const certCompleted = await certificateQueue.getCompleted();
+    const certFailed = await certificateQueue.getFailed();
+
+    // Get email queue stats
+    const emailWaiting = await emailQueue.getWaiting();
+    const emailActive = await emailQueue.getActive();
+    const emailCompleted = await emailQueue.getCompleted();
+    const emailFailed = await emailQueue.getFailed();
+
+    // Filter jobs for specific event if needed
+    let eventCertJobs = { waiting: 0, active: 0, completed: 0, failed: 0 };
+    let eventEmailJobs = { waiting: 0, active: 0, completed: 0, failed: 0 };
+
+    if (event_id) {
+      // Get attendances for this event
+      const [attendances] = await pool.query(
+        'SELECT id FROM presensi WHERE event_id = ?',
+        [event_id]
+      );
+      const attendanceIds = attendances.map(a => a.id);
+
+      // Count jobs for this event
+      eventCertJobs.waiting = certWaiting.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+      eventCertJobs.active = certActive.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+      eventCertJobs.completed = certCompleted.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+      eventCertJobs.failed = certFailed.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+
+      eventEmailJobs.waiting = emailWaiting.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+      eventEmailJobs.active = emailActive.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+      eventEmailJobs.completed = emailCompleted.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+      eventEmailJobs.failed = emailFailed.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        certificate_queue: {
+          total: {
+            waiting: certWaiting.length,
+            active: certActive.length,
+            completed: certCompleted.length,
+            failed: certFailed.length
+          },
+          event: event_id ? eventCertJobs : null
+        },
+        email_queue: {
+          total: {
+            waiting: emailWaiting.length,
+            active: emailActive.length,
+            completed: emailCompleted.length,
+            failed: emailFailed.length
+          },
+          event: event_id ? eventEmailJobs : null
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get queue status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get queue status'
+    });
+  }
+};
+
+// Retry failed jobs
+export const retryFailedJobs = async (req, res) => {
+  try {
+    const { queue_type } = req.params; // 'certificate' or 'email'
+    
+    const queue = queue_type === 'certificate' ? certificateQueue : emailQueue;
+    const failedJobs = await queue.getFailed();
+
+    let retriedCount = 0;
+    for (const job of failedJobs) {
+      await job.retry();
+      retriedCount++;
+    }
+
+    res.json({
+      success: true,
+      message: `Retried ${retriedCount} failed jobs`,
+      data: {
+        queue: queue_type,
+        retried: retriedCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Retry failed jobs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retry jobs'
+    });
+  }
+};
+
+// Clean completed jobs
+export const cleanCompletedJobs = async (req, res) => {
+  try {
+    const certCleaned = await certificateQueue.clean(0, 'completed');
+    const emailCleaned = await emailQueue.clean(0, 'completed');
+
+    res.json({
+      success: true,
+      message: 'Cleaned completed jobs',
+      data: {
+        certificate_queue: certCleaned,
+        email_queue: emailCleaned
+      }
+    });
+
+  } catch (error) {
+    console.error('Clean completed jobs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to clean jobs'
+    });
   }
 };
