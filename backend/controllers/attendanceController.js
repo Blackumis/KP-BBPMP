@@ -178,7 +178,7 @@ export const submitAttendance = async (req, res) => {
 export const getEventAttendances = async (req, res) => {
   try {
     const { event_id } = req.params;
-    const { page = 1, limit = 50, status } = req.query;
+    const { page = 1, limit = 10000, status } = req.query; // Increased default limit to 10000
     const offset = (page - 1) * limit;
 
     let query = `
@@ -192,8 +192,13 @@ export const getEventAttendances = async (req, res) => {
       params.push(status);
     }
 
-    query += " ORDER BY urutan_absensi ASC LIMIT ? OFFSET ?";
-    params.push(parseInt(limit), parseInt(offset));
+    // Only apply LIMIT if it's not "all"
+    if (limit === 'all') {
+      query += " ORDER BY urutan_absensi ASC";
+    } else {
+      query += " ORDER BY urutan_absensi ASC LIMIT ? OFFSET ?";
+      params.push(parseInt(limit), parseInt(offset));
+    }
 
     const [attendances] = await pool.query(query, params);
 

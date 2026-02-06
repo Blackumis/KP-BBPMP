@@ -18,6 +18,11 @@ import templateRoutes from "./routes/templateRoutes.js";
 import kopSuratRoutes from "./routes/kopSuratRoutes.js";
 import officialRoutes from "./routes/officialRoutes.js";
 
+// Simple Queue (no Redis needed!)
+import { certificateQueue, emailQueue } from './config/simpleQueue.js';
+// Import workers to start processing
+import './workers/certificateWorker.js';
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -79,6 +84,14 @@ app.use(
 // Static uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/certificates", express.static(path.join(__dirname, "certificates")));
+
+// Queue monitoring endpoint
+app.get('/api/queue/stats', (req, res) => {
+  res.json({
+    certificate: certificateQueue.getStats(),
+    email: emailQueue.getStats()
+  });
+});
 
 // API routes
 app.use("/api/auth", authRoutes);

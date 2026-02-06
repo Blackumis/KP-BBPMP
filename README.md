@@ -10,8 +10,10 @@ Aplikasi manajemen kehadiran dan sertifikat untuk **BBPMP Provinsi Jawa Tengah**
 - [Instalasi](#-instalasi)
 - [Konfigurasi](#-konfigurasi)
 - [Menjalankan Aplikasi](#-menjalankan-aplikasi)
+- [Queue System untuk Sertifikat Massal](#-queue-system-untuk-sertifikat-massal)
 - [Struktur Folder](#-struktur-folder)
 - [Fitur](#-fitur)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -32,6 +34,7 @@ KP-BBPMP adalah sistem manajemen kehadiran dan sertifikat yang memungkinkan:
 | **Frontend** | React 19, Vite, Tailwind CSS |
 | **Backend** | Node.js, Express.js |
 | **Database** | MySQL |
+| **Queue System** | Bull, Redis |
 | **Email** | Nodemailer (SMTP) |
 | **PDF** | PDFKit |
 
@@ -43,6 +46,7 @@ Sebelum instalasi, pastikan komputer Anda memiliki:
 
 - **Node.js** versi 18 atau lebih baru ([Download](https://nodejs.org/))
 - **MySQL** versi 8.0 atau lebih baru ([Download](https://dev.mysql.com/downloads/))
+- **Redis** untuk queue system ([Lihat panduan instalasi](#install-redis))
 
 
 Untuk mengecek versi Node.js:
@@ -105,6 +109,21 @@ npm run create-admin
 
 Ikuti instruksi untuk membuat username dan password admin.
 
+### 7. Install Redis (untuk Queue System)
+
+**Option 1: Docker (Recommended)**
+```bash
+docker run -d -p 6379:6379 --name redis-bbpmp redis:alpine
+```
+
+**Option 2: Windows/Linux/Mac**  
+Lihat panduan lengkap: [REDIS_INSTALLATION.md](REDIS_INSTALLATION.md)
+
+**Test Redis:**
+```bash
+npm run test-redis
+```
+
 ---
 
 ## Konfigurasi
@@ -135,6 +154,11 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=email-anda@gmail.com
 SMTP_PASSWORD=xxxx-xxxx-xxxx-xxxx
+
+# Redis Configuration (Queue System)
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASSWORD=
 
 # File Upload Configuration
 MAX_FILE_SIZE=5242880
@@ -195,15 +219,79 @@ Akses aplikasi di `http://localhost:5000`
 
 ---
 
+## 🚀 Queue System untuk Sertifikat Massal
+
+Sistem queue telah ditambahkan untuk menangani pembuatan dan pengiriman sertifikat secara massal (seperti 3000 peserta) dengan lebih efisien dan reliable.
+
+### Fitur Queue System
+
+✅ **Scalable** - Handle ribuan peserta tanpa timeout  
+✅ **Reliable** - Auto-retry jika gagal (3x certificate, 5x email)  
+✅ **Monitoring** - Dashboard real-time untuk track progress  
+✅ **Non-blocking** - API response cepat, proses di background  
+✅ **Error Handling** - Failed jobs dapat di-retry manual  
+
+### Quick Start
+
+1. **Pastikan Redis berjalan:**
+   ```bash
+   # Via Docker
+   docker start redis-bbpmp
+   
+   # Test connection
+   npm run test-redis
+   ```
+
+2. **Akses Queue Dashboard:**
+   ```
+   http://localhost:5000/admin/queues
+   ```
+
+3. **Load 3000 Test Data:**
+   ```bash
+   mysql -u root -p bbpmp_presensi < backend/database/test-3000-participants.sql
+   ```
+
+4. **Generate Sertifikat (via API):**
+   ```http
+   POST http://localhost:5000/api/certificates/generate-event/{event_id}
+   Authorization: Bearer YOUR_TOKEN
+   ```
+
+5. **Monitor Progress:**
+   - Dashboard: `http://localhost:5000/admin/queues`
+   - API: `GET /api/certificates/queue/status/{event_id}`
+
+6. **Kirim Email:**
+   ```http
+   POST http://localhost:5000/api/certificates/send-event/{event_id}
+   ```
+
+### Dokumentasi Lengkap
+
+- **[SETUP_QUEUE.md](SETUP_QUEUE.md)** - Setup & testing guide
+- **[QUEUE_GUIDE.md](backend/QUEUE_GUIDE.md)** - Complete documentation
+- **[REDIS_INSTALLATION.md](REDIS_INSTALLATION.md)** - Redis installation guide
+
+### Performance
+
+| Concurrency | 3000 Certificates | 3000 Emails | Total |
+|-------------|------------------|-------------|-------|
+| 1 (default) | ~1.6 jam | ~2.5 jam | ~4.1 jam |
+| 5 / 10      | ~20 menit | ~15 menit | ~35 menit |
+| 10 / 20     | ~10 menit | ~7.5 menit | ~17.5 menit |
+
+---
+
 ## Struktur Folder
 
 ```
 KP-BBPMP/
 ├── backend/
 │   ├── certificates/       # Sertifikat yang digenerate
-│   ├── config/             # Konfigurasi database
+│   ├── config/             # Konfigurasi database & queue
 │   ├── controllers/        # Logic handler
-│   ├── database/           # Schema SQL
+│   ├── database/           # Schema SQL & test data
 │   ├── middleware/         # Auth & upload middleware
 │   ├── migrations/         # Database migrations
 │   ├── routes/             # API routes
@@ -212,6 +300,7 @@ KP-BBPMP/
 │   │   ├── signatures/     # Tanda tangan peserta
 │   │   └── templates/      # Template sertifikat
 │   ├── utils/              # Helper functions
+│   ├── workers/            # Queue workers
 │   ├── .env                # Environment variables
 │   ├── package.json
 │   └── server.js           # Entry point
@@ -258,6 +347,19 @@ netstat -ano | findstr :5000
 # Matikan proses
 taskkill /PID <PID> /F
 ```
+
+### Error: Redis Connection (Queue System)
+```
+Error: connect ECONNREFUSED 127.0.0.1:6379
+```
+- Pastikan Redis sudah berjalan
+- Test dengan: `redis-cli ping` (harus return "PONG")
+- Start Redis: `docker start redis-bbpmp`
+
+### Queue tidak memproses jobs
+- Pastikan worker sudah diimport di `server.js`
+- Check Bull Board dashboard: `http://localhost:5000/admin/queues`
+- Restart server
 
 
 **© 2026 BBPMP Provinsi Jawa Tengah**
