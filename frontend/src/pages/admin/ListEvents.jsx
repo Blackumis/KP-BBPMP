@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { eventsAPI } from "../../services/api";
+import { eventsAPI, attendanceAPI } from "../../services/api";
 import { showNotification } from "../../components/Notification";
 import { useMemo } from "react";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import SmtpSettingsModal from "../../components/SmtpSettingsModal";
 
 const ListEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showSmtpSettings, setShowSmtpSettings] = useState(false);
   const itemsPerPage = 10;
 
   // Fungsi untuk cek apakah kegiatan sudah melewati batas waktu
@@ -127,6 +129,49 @@ const ListEvents = () => {
     });
   };
 
+  const [loadingTokenFor, setLoadingTokenFor] = useState(null);
+
+  const generateAndCopyLink = async (eventId) => {
+    setLoadingTokenFor(eventId);
+    try {
+      const res = await attendanceAPI.generateToken(eventId);
+      if (res.success && res.token) {
+        const shareUrl = `${window.location.origin}/attendance/${res.token}`;
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          showNotification("Link berhasil disalin ke clipboard!", "success");
+        } catch (_err) {
+          prompt("Salin link berikut:", shareUrl);
+        }
+      } else {
+        showNotification(res.message || "Gagal membuat token link", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message || "Gagal membuat token link", "error");
+    } finally {
+      setLoadingTokenFor(null);
+    }
+  };
+
+  const generateAndOpenForm = async (eventId) => {
+    setLoadingTokenFor(eventId);
+    try {
+      const res = await attendanceAPI.generateToken(eventId);
+      if (res.success && res.token) {
+        const url = `${window.location.origin}/attendance/${res.token}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        showNotification(res.message || "Gagal membuat token link", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message || "Gagal membuat token link", "error");
+    } finally {
+      setLoadingTokenFor(null);
+    }
+  };
+
   const getStatusBadge = (event) => {
     const actualStatus = getActualStatus(event);
 
@@ -193,6 +238,17 @@ const ListEvents = () => {
           <Link to="/admin/pejabat" className="px-4 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:text-blue-600 hover:bg-gray-50">
             Pejabat
           </Link>
+          <div className="flex-1"></div>
+          <button
+            onClick={() => setShowSmtpSettings(true)}
+            className="px-3 py-2 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition flex items-center gap-1"
+            title="Pengaturan SMTP"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
         </div>
 
         <div className="flex justify-between items-center mb-6 border-b pb-4">
@@ -307,35 +363,32 @@ const ListEvents = () => {
                           {event.status === "active" && (
                             <>
                               <button
-                                onClick={() => {
-                                  const shareUrl = `${window.location.origin}/attendance/${event.id}/${encodeURIComponent(event.nama_kegiatan)}`;
-                                  navigator.clipboard
-                                    .writeText(shareUrl)
-                                    .then(() => {
-                                      showNotification("Link berhasil disalin ke clipboard!", "success");
-                                    })
-                                    .catch(() => {
-                                      prompt("Salin link berikut:", shareUrl);
-                                    });
-                                }}
+                                onClick={() => generateAndCopyLink(event.id)}
                                 className="inline-flex items-center justify-center w-7 h-7 bg-cyan-100 text-cyan-700 rounded-full hover:bg-cyan-200"
                                 title="Salin Link Absensi"
+                                disabled={loadingTokenFor === event.id}
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                                  />
-                                </svg>
+                                {loadingTokenFor === event.id ? (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.25" />
+                                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" />
+                                  </svg>
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                                    />
+                                  </svg>
+                                )}
                               </button>
-                              <a
-                                href={`/attendance/${event.id}/${event.nama_kegiatan}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={() => generateAndOpenForm(event.id)}
                                 className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium hover:bg-green-200"
                                 title="Form"
+                                disabled={loadingTokenFor === event.id}
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path
@@ -346,7 +399,7 @@ const ListEvents = () => {
                                   />
                                 </svg>
                                 Form
-                              </a>
+                              </button>
                               <Link
                                 to={`/admin/edit/${event.id}`}
                                 className="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium hover:bg-yellow-200"
@@ -427,6 +480,12 @@ const ListEvents = () => {
           </div>
         )}
       </div>
+
+      {/* SMTP Settings Modal */}
+      <SmtpSettingsModal
+        isOpen={showSmtpSettings}
+        onClose={() => setShowSmtpSettings(false)}
+      />
     </>
   );
 };

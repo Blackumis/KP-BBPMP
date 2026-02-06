@@ -17,6 +17,7 @@ import referenceRoutes from "./routes/referenceRoutes.js";
 import templateRoutes from "./routes/templateRoutes.js";
 import kopSuratRoutes from "./routes/kopSuratRoutes.js";
 import officialRoutes from "./routes/officialRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 
 // Simple Queue (no Redis needed!)
 import { certificateQueue, emailQueue } from './config/simpleQueue.js';
@@ -36,13 +37,7 @@ const ensureDir = (dir) => {
 
 const UPLOADS_DIR = path.join(__dirname, "uploads");
 
-[
-  "templates",
-  "signatures",
-  "kop-surat",
-  "pejabat/signatures",
-  "pejabat/qrcode",
-].forEach((folder) => {
+["templates", "signatures", "kop-surat", "pejabat/signatures", "pejabat/qrcode"].forEach((folder) => {
   ensureDir(path.join(UPLOADS_DIR, folder));
 });
 
@@ -102,6 +97,7 @@ app.use("/api/reference", referenceRoutes);
 app.use("/api/templates", templateRoutes);
 app.use("/api/officials", officialRoutes);
 app.use("/api/kop-surat", kopSuratRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -109,7 +105,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // === FRONTEND STATIC ===
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
 // Read index.html template once and reuse (fast and simple)
 const indexPath = path.join(__dirname, "public", "index.html");

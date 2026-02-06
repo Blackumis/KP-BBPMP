@@ -18,7 +18,7 @@ export const generateSingleCertificate = async (req, res) => {
     const [attendances] = await pool.query(
       `SELECT a.*, e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai, 
               e.template_sertifikat, e.nomor_surat, e.certificate_layout, e.official_id,
-              o.signature_qr_path as official_qr_path
+              o.signature_image_path as official_signature_path
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
        LEFT JOIN pejabat o ON e.official_id = o.id
@@ -55,7 +55,7 @@ export const generateSingleCertificate = async (req, res) => {
         tanggal_mulai: attendance.tanggal_mulai,
         tanggal_selesai: attendance.tanggal_selesai,
         certificate_layout: certificateLayout,
-        official_qr_path: attendance.official_qr_path
+        official_signature_path: attendance.official_signature_path
       },
       attendance.template_sertifikat
     );
@@ -95,7 +95,7 @@ export const generateEventCertificates = async (req, res) => {
 
     // Get event details with official information
     const [events] = await pool.query(
-      `SELECT e.*, o.signature_qr_path as official_qr_path
+      `SELECT e.*, o.signature_image_path as official_signature_path
        FROM kegiatan e
        LEFT JOIN pejabat o ON e.official_id = o.id
        WHERE e.id = ?`,
@@ -147,6 +147,7 @@ export const generateEventCertificates = async (req, res) => {
           tanggal_selesai: event.tanggal_selesai,
           certificate_layout: certificateLayout,
           official_qr_path: event.official_qr_path,
+          official_signature_path: event.official_signature_path,
           template_sertifikat: event.template_sertifikat
         }
       });

@@ -14,6 +14,11 @@ reports/
 npm-debug.log*
 
 # ===================================
+# SMTP Settings (contains credentials)
+# ===================================
+config/smtp-settings.json
+
+# ===================================
 # Build & Cache
 # ===================================
 dist/

@@ -1,28 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 const NotFoundPage = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-      {/* Header */}
-      <div className="bg-white shadow-md border-b-4 border-yellow-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png"
-              alt="Kemendikdasmen"
-              className="h-12 w-auto"
-            />
-            <div className="flex flex-col">
-              <h1 className="text-lg font-bold text-blue-800 uppercase leading-tight">Kemendikdasmen</h1>
-              <p className="text-xs font-semibold text-gray-700">BBPMP Provinsi Jawa Tengah</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800">
+      <Header isAuthenticated={false} user={null} onLogout={() => {}} />
 
-      {/* Content */}
-      <div className="grow flex items-center justify-center p-4">
+      <main className="grow flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
           {/* 404 Icon */}
           <div className="mb-6">
@@ -47,17 +33,21 @@ const NotFoundPage = () => {
           <p className="text-gray-600 mb-8">
             Maaf, halaman yang Anda cari tidak dapat ditemukan. Halaman mungkin telah dipindahkan atau tidak ada.
           </p>
-        </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-auto">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500">
-            © {new Date().getFullYear()} BBPMP Provinsi Jawa Tengah - Kemendikdasmen
-          </p>
+          {/* Back to Home Button */}
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all shadow-md"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            Kembali ke Beranda
+          </Link>
         </div>
-      </footer>
+      </main>
+
+      <Footer />
     </div>
   );
 };

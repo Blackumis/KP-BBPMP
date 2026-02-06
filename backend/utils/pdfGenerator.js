@@ -116,35 +116,13 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
           const fieldWidth = (field.width / 100) * pageWidth;
           const fieldHeight = (field.height / 100) * pageHeight;
 
-          if (field.type === "qr") {
-            // Generate QR Code
+          if (field.type === "qr" && field.field !== "signature_authority") {
+            // Generate QR Code (but NOT for signature_authority - that uses the uploaded image)
             try {
               let qrBuffer = null;
               
               // QR codes must be square - use the smaller dimension
               const qrSize = Math.min(fieldWidth, fieldHeight);
-              
-              // Check if this is the signature authority QR and we have an official QR
-              if (field.field === "signature_authority" && eventData.official_qr_path) {
-                // Use the official's QR code image
-                const qrPath = path.join(__dirname, "..", eventData.official_qr_path);
-                if (fs.existsSync(qrPath)) {
-                  // Calculate position based on textAlign to match text rendering
-                  let qrX = xPos;
-                  if (field.textAlign === "center") {
-                    qrX = xPos - qrSize / 2;
-                  } else if (field.textAlign === "right") {
-                    qrX = xPos - qrSize;
-                  }
-                  
-                  // Add QR image to PDF as perfect square
-                  doc.image(qrPath, qrX, yPos, {
-                    width: qrSize,
-                    height: qrSize,
-                  });
-                  continue; // Skip to next field
-                }
-              }
               
               // For other QR codes (validation, etc.), generate dynamically
               const qrData = getDynamicValue(field.field);
@@ -174,6 +152,31 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
               }
             } catch (err) {
               console.error("Error generating QR code:", err);
+            }
+          } else if ((field.type === "image" || field.type === "qr") && field.field === "signature_authority") {
+            // Handle signature authority image (can be QR code or signature image)
+            try {
+              if (eventData.official_signature_path) {
+                const imagePath = path.join(__dirname, "..", eventData.official_signature_path);
+                if (fs.existsSync(imagePath)) {
+                  // Calculate position based on textAlign
+                  let imgX = xPos;
+                  if (field.textAlign === "center") {
+                    imgX = xPos - fieldWidth / 2;
+                  } else if (field.textAlign === "right") {
+                    imgX = xPos - fieldWidth;
+                  }
+                  
+                  // Add image to PDF with proper dimensions
+                  doc.image(imagePath, imgX, yPos, {
+                    width: fieldWidth,
+                    height: fieldHeight,
+                    fit: [fieldWidth, fieldHeight],
+                  });
+                }
+              }
+            } catch (err) {
+              console.error("Error adding signature image:", err);
             }
           } else {
             // Text field (static or dynamic)

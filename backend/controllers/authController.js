@@ -24,7 +24,7 @@ export const login = async (req, res) => {
     if (admins.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Username Salah'
       });
     }
 
@@ -35,7 +35,7 @@ export const login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Password Salah'
       });
     }
 

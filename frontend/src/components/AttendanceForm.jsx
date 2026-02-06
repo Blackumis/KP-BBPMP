@@ -39,8 +39,6 @@ const AttendanceForm = ({ eventId }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
-  const [signatureFile, setSignatureFile] = useState(null);
-  const [signaturePreview, setSignaturePreview] = useState("");
 
   // Helper: convert canvas to Blob (PNG)
   const canvasToBlob = (canvas) =>
@@ -54,7 +52,7 @@ const AttendanceForm = ({ eventId }) => {
 
   // Initialize canvas with proper resolution
   const containerRef = useRef(null);
-  const [signatureMode, setSignatureMode] = useState("draw"); // 'draw' atau 'upload'
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -144,7 +142,6 @@ const AttendanceForm = ({ eventId }) => {
     setIsDrawing(false);
     const canvas = canvasRef.current;
     if (canvas) {
-      setSignatureFile(null);
       setHasSignature(true);
       // Clear signature validation error when user draws
       setValidationErrors((prev) => ({ ...prev, signature: "" }));
@@ -152,31 +149,13 @@ const AttendanceForm = ({ eventId }) => {
   };
 
   const clearSignature = () => {
-    // Jika canvas ada (mode draw)
     if (canvasRef?.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Reset state untuk upload maupun draw
-    setSignatureFile(null);
-    setSignaturePreview("");
     setHasSignature(false);
-
-    // Optional: clear error validasi
-    setValidationErrors((prev) => ({ ...prev, signature: "" }));
-  };
-
-  const handleSignatureUpload = (file) => {
-    if (!file) return;
-
-    const previewUrl = URL.createObjectURL(file);
-
-    setSignatureFile(file);
-    setSignaturePreview(previewUrl);
-    setHasSignature(true);
-
     setValidationErrors((prev) => ({ ...prev, signature: "" }));
   };
 
@@ -386,16 +365,12 @@ const AttendanceForm = ({ eventId }) => {
         }
       });
 
-      let fileToSend = signatureFile;
-      if (!fileToSend) {
-        const canvas = canvasRef.current;
-        const blob = await canvasToBlob(canvas);
-        const filename = `signature-${Date.now()}.png`;
-        fileToSend = new File([blob], filename, { type: "image/png" });
-      }
+      const canvas = canvasRef.current;
+      const blob = await canvasToBlob(canvas);
+      const filename = `signature-${Date.now()}.png`;
+      const fileToSend = new File([blob], filename, { type: "image/png" });
 
       if (fileToSend) {
-        const filename = `signature-${Date.now()}.png`;
         fd.append("signature", fileToSend, filename);
       }
 
@@ -492,30 +467,47 @@ const AttendanceForm = ({ eventId }) => {
 
   if (submitted) {
     return (
-      <div className="max-w-xl mx-auto bg-white p-10 rounded-xl shadow-2xl text-center my-12 border-t-8 border-green-600">
-        <div className="h-24 w-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-          <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+      <div className="max-w-sm sm:max-w-md lg:max-w-xl mx-auto bg-white p-8 rounded-xl shadow-xl text-center my-12 border-t-8 border-green-600">
+        {/* Icon */}
+        <div className="h-20 w-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-5">
+          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-3xl font-bold text-gray-800 mb-2">Absensi Berhasil!</h3>
-        <p className="text-gray-600 mb-4 leading-relaxed">
-          Data kehadiran Anda untuk kegiatan <strong>{config.nama_kegiatan}</strong> telah berhasil disimpan.
+
+        {/* Title */}
+        <h3 className="text-2xl font-bold text-gray-800 mb-2">Absensi Berhasil</h3>
+
+        {/* Description */}
+        <p className="text-gray-600 text-sm mb-4">
+          Kehadiran Anda pada kegiatan <strong>{config.nama_kegiatan}</strong> telah tercatat.
         </p>
+
+        {/* Certificate Info */}
         {submitResult && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <p className="text-sm text-blue-800">
               <strong>No. Sertifikat:</strong> {submitResult.nomor_sertifikat}
             </p>
           </div>
         )}
-        <p className="text-gray-500 text-sm mb-2">Sertifikat akan dikirimkan ke email terdaftar setelah kegiatan selesai.</p>
+
+        {/* Info */}
+        <p className="text-gray-500 text-xs mb-4">Sertifikat akan dikirim melalui email setelah kegiatan selesai.</p>
+
+        {/* Warning */}
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-          <p className="text-xs text-yellow-800 flex items-start gap-2">
-            <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          <p className="text-xs text-yellow-800 flex items-center gap-2 justify-center">
+            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
             </svg>
-            <span><strong>Penting:</strong> Jika email tidak masuk, silakan periksa folder Spam/Junk di email Anda.</span>
+            <span>
+              Jika email tidak diterima, periksa folder <strong>Spam</strong>.
+            </span>
           </p>
         </div>
       </div>
@@ -857,7 +849,7 @@ const AttendanceForm = ({ eventId }) => {
                           className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm md:text-base ${
                             validationErrors.kabupaten_kota ? "border-red-500 focus:border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
                           }`}
-                          placeholder="Tuliskan nama provinsi & kota"
+                          placeholder="Tuliskan nama kota dan provinsi"
                         />
                         {validationErrors.kabupaten_kota && (
                           <p className="mt-2 flex items-center gap-2 text-red-600 text-sm animate-pulse">
@@ -880,210 +872,49 @@ const AttendanceForm = ({ eventId }) => {
                     e-Signature / TTD Elektronik <span className="text-red-500">*</span>
                   </label>
 
-                  {/* Pilihan Mode Signature */}
-                  <div className="mb-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSignatureMode("draw");
-                          clearSignature();
-                        }}
-                        className={`px-4 py-3 rounded-lg border-2 transition-all font-medium text-sm flex items-center justify-center gap-2 ${
-                          signatureMode === "draw" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                        Gambar Sendiri
-                      </button>
+                  <div className={`border-2 rounded-lg p-3 md:p-4 transition-all ${validationErrors.signature ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"}`}>
+                    <div ref={containerRef} className={`bg-white rounded-lg overflow-hidden mb-3 border-2 border-dashed mx-auto ${validationErrors.signature ? "border-red-300" : "border-gray-300"}`}>
+                      <canvas
+                        ref={canvasRef}
+                        className="block w-full cursor-crosshair touch-none aspect-square md:aspect-auto"
+                        onMouseDown={startDrawing}
+                        onMouseMove={draw}
+                        onMouseUp={stopDrawing}
+                        onMouseLeave={stopDrawing}
+                        onTouchStart={startDrawing}
+                        onTouchMove={draw}
+                        onTouchEnd={stopDrawing}
+                      />
+                    </div>
 
+                    {validationErrors.signature && (
+                      <div className="mb-3 flex items-center gap-2 text-red-600 text-sm animate-pulse">
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>{validationErrors.signature}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          setSignatureMode("upload");
-                          clearSignature();
-                        }}
-                        className={`px-4 py-3 rounded-lg border-2 transition-all font-medium text-sm flex items-center justify-center gap-2 ${
-                          signatureMode === "upload" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
-                        }`}
+                        onClick={clearSignature}
+                        className="flex-1 px-4 py-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth="2"
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                           />
                         </svg>
-                        Upload Gambar
+                        Hapus Tanda Tangan
                       </button>
                     </div>
-                  </div>
 
-                  <div className={`border-2 rounded-lg p-3 md:p-4 transition-all ${validationErrors.signature ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"}`}>
-                    {/* Mode: Gambar Sendiri */}
-                    {signatureMode === "draw" && (
-                      <>
-                        <div
-                          ref={containerRef}
-                          className={`bg-white rounded-lg overflow-hidden mb-3 border-2 border-dashed mx-auto ${validationErrors.signature ? "border-red-300" : "border-gray-300"}`}
-                        >
-                          <canvas
-                            ref={canvasRef}
-                            className="block w-full cursor-crosshair touch-none aspect-square md:aspect-auto"
-                            onMouseDown={startDrawing}
-                            onMouseMove={draw}
-                            onMouseUp={stopDrawing}
-                            onMouseLeave={stopDrawing}
-                            onTouchStart={startDrawing}
-                            onTouchMove={draw}
-                            onTouchEnd={stopDrawing}
-                          />
-                        </div>
-
-                        {validationErrors.signature && (
-                          <div className="mb-3 flex items-center gap-2 text-red-600 text-sm animate-pulse">
-                            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                            <span>{validationErrors.signature}</span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={clearSignature}
-                            className="flex-1 px-4 py-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                            Hapus Tanda Tangan
-                          </button>
-                        </div>
-
-                        <p className="text-xs text-gray-500 mt-3 text-center">Tanda tangani di kotak putih menggunakan mouse atau sentuhan layar</p>
-                      </>
-                    )}
-
-                    {/* Mode: Upload Gambar */}
-                    {signatureMode === "upload" && (
-                      <>
-                        {!hasSignature ? (
-                          <label className="block cursor-pointer">
-                            <div
-                              className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-                                validationErrors.signature ? "border-red-300 bg-white hover:bg-red-50" : "border-gray-300 bg-white hover:bg-gray-50"
-                              }`}
-                            >
-                              <div className="flex flex-col items-center gap-3">
-                                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="2"
-                                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                    />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-700 mb-1">Klik untuk upload gambar tanda tangan</p>
-                                  <p className="text-xs text-gray-500">PNG, JPG, atau JPEG (Maks. 5MB)</p>
-                                </div>
-                              </div>
-                            </div>
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/jpg"
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) {
-                                  // Validasi ukuran file (5MB)
-                                  if (f.size > 5 * 1024 * 1024) {
-                                    showNotification("Ukuran file maksimal 5MB", "error");
-                                    return;
-                                  }
-                                  handleSignatureUpload(f);
-                                }
-                              }}
-                              className="hidden"
-                            />
-                          </label>
-                        ) : (
-                          <div>
-                            {/* Preview Upload */}
-                            <div className="bg-white rounded-lg overflow-hidden mb-3 border-2 border-dashed border-gray-300">
-                              <img src={signaturePreview} alt="Preview tanda tangan" className="block w-full aspect-square object-contain bg-white" />
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={clearSignature}
-                                className="flex-1 px-4 py-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                                Hapus
-                              </button>
-
-                              <label className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer text-sm font-semibold transition text-center flex items-center justify-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                  />
-                                </svg>
-                                Ganti Gambar
-                                <input
-                                  type="file"
-                                  accept="image/png,image/jpeg,image/jpg"
-                                  onChange={(e) => {
-                                    const f = e.target.files?.[0];
-                                    if (f) {
-                                      if (f.size > 5 * 1024 * 1024) {
-                                        showNotification("Ukuran file maksimal 5MB", "error");
-                                        return;
-                                      }
-                                      handleSignatureUpload(f);
-                                    }
-                                  }}
-                                  className="hidden"
-                                />
-                              </label>
-                            </div>
-                          </div>
-                        )}
-
-                        {validationErrors.signature && (
-                          <div className="mt-3 flex items-center gap-2 text-red-600 text-sm animate-pulse">
-                            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                            <span>{validationErrors.signature}</span>
-                          </div>
-                        )}
-
-                        <p className="text-xs text-gray-500 mt-3 text-center">Upload gambar tanda tangan Anda dengan latar belakang putih/transparan</p>
-                      </>
-                    )}
+                    <p className="text-xs text-gray-500 mt-3 text-center">Tanda tangani di kotak putih menggunakan mouse atau sentuhan layar</p>
                   </div>
                 </div>
               )}
@@ -1160,17 +991,21 @@ const AttendanceForm = ({ eventId }) => {
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-              Batas Waktu
+              Batas Waktu Presensi
             </h3>
             <div className="bg-white/20 rounded-lg p-3 text-center backdrop-blur-sm">
               <span className="font-mono text-base md:text-lg font-bold tracking-wider block">
-                {new Date(config.batas_waktu_absensi).toLocaleString("id-ID", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }).replace(/\./g, ":")} WIB
+                {new Date(config.batas_waktu_absensi)
+                  .toLocaleString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                  .replace(/\./g, ":")}{" "}
+                WIB
               </span>
             </div>
           </div>
@@ -1185,16 +1020,36 @@ const AttendanceForm = ({ eventId }) => {
             Info Kegiatan
           </h3>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-              <span className="text-gray-500">Tanggal</span>
-              <span className="text-gray-900 font-semibold">{formatDate(config.tanggal_mulai)}</span>
-            </div>
-            <div className="flex justify-between items-center pb-1">
-              <span className="text-gray-500">Waktu</span>
-              <span className="text-gray-900 font-semibold">
-                {formatTime(config.jam_mulai)} - {formatTime(config.jam_selesai)}
-              </span>
-            </div>
+            {config.tanggal_mulai === config.tanggal_selesai ? (
+              <div className="">
+                <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                  <span className="text-gray-500">Tanggal</span>
+                  <span className="text-gray-900 font-semibold">{formatDate(config.tanggal_mulai)}</span>
+                </div>
+                <div className="flex justify-between items-center pb-1">
+                  <span className="text-gray-500">Waktu</span>
+                  <span className="text-gray-900 font-semibold">
+                    {formatTime(config.jam_mulai)} - {formatTime(config.jam_selesai)} WIB
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <span className="text-gray-500 text-xs font-medium block mb-2">Waktu Mulai</span>
+                    <div className="text-gray-900 font-semibold text-sm leading-relaxed">{formatDate(config.tanggal_mulai)}</div>
+                    <div className="text-blue-700 font-medium text-sm mt-1">{formatTime(config.jam_mulai)} WIB</div>
+                  </div>
+
+                  <div className="bg-yellow-50 rounded-lg p-3">
+                    <span className="text-gray-500 text-xs font-medium block mb-2">Waktu Selesai</span>
+                    <div className="text-gray-900 font-semibold text-sm leading-relaxed">{formatDate(config.tanggal_selesai)}</div>
+                    <div className="text-yellow-700 font-medium text-sm mt-1">{formatTime(config.jam_selesai)} WIB</div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

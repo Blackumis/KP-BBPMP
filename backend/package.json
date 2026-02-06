@@ -34,6 +34,7 @@
     "nodemailer": "^7.0.12",
     "pdfkit": "^0.14.0",
     "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { kopSuratAPI } from "../../services/api";
 import { showNotification } from "../../components/Notification";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import SmtpSettingsModal from "../../components/SmtpSettingsModal";
 
 const ListKopSurat = () => {
   const [kopSurats, setKopSurats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showSmtpSettings, setShowSmtpSettings] = useState(false);
   const itemsPerPage = 10;
 
   const [confirmDialog, setConfirmDialog] = useState({
@@ -151,7 +153,9 @@ const ListKopSurat = () => {
       day: "numeric",
     });
   };
-  const VITE_BASE_URL = import.meta.env.VITE_BASE_URL;
+  
+  // Use VITE_BASE_URL with fallback to localhost:5000
+  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5000";
 
   if (loading) {
     return (
@@ -187,6 +191,17 @@ const ListKopSurat = () => {
           <Link to="/admin/pejabat" className="px-4 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:text-blue-600 hover:bg-gray-50">
             Pejabat
           </Link>
+          <div className="flex-1"></div>
+          <button
+            onClick={() => setShowSmtpSettings(true)}
+            className="px-3 py-2 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition flex items-center gap-1"
+            title="Pengaturan SMTP"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
         </div>
 
         <div className="flex justify-between items-center mb-6 border-b pb-4">
@@ -233,9 +248,9 @@ const ListKopSurat = () => {
             <table className="min-w-full bg-white">
               <thead className="bg-gray-100 border-b-2 border-gray-200">
                 <tr>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Instansi / Unit</th>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Periode</th>
+                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
+                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Instansi / Unit</th>
+                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Periode</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Kop</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
@@ -251,7 +266,7 @@ const ListKopSurat = () => {
                     </td>
                     <td className="py-4 px-4 text-center">
                       {kopSurat.kop_url ? (
-                        <img src={`${VITE_BASE_URL}/${kopSurat.kop_url}`} alt="Kop Surat" className="h-12 mx-auto object-contain border rounded" />
+                        <img src={`${BASE_URL}/${kopSurat.kop_url}`} alt="Kop Surat" className="h-12 mx-auto object-contain border rounded" />
                       ) : (
                         <span className="text-xs text-gray-400">Tidak ada</span>
                       )}
@@ -329,6 +344,12 @@ const ListKopSurat = () => {
           </div>
         )}
       </div>
+
+      {/* SMTP Settings Modal */}
+      <SmtpSettingsModal
+        isOpen={showSmtpSettings}
+        onClose={() => setShowSmtpSettings(false)}
+      />
     </>
   );
 };
