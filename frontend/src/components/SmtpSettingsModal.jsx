@@ -16,6 +16,8 @@ const SmtpSettingsModal = ({ isOpen, onClose }) => {
     password: "",
     fromName: "BBPMP",
   });
+  const [hasExistingPassword, setHasExistingPassword] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -29,12 +31,14 @@ const SmtpSettingsModal = ({ isOpen, onClose }) => {
     try {
       const res = await settingsAPI.getSmtp();
       if (res.success) {
+        setHasExistingPassword(!!res.data.hasPassword);
+        setPasswordChanged(false);
         setFormData({
           host: res.data.host || "",
           port: res.data.port || 587,
           secure: res.data.secure || false,
           user: res.data.user || "",
-          password: res.data.password || "",
+          password: "",
           fromName: res.data.fromName || "BBPMP",
         });
       }
@@ -48,6 +52,9 @@ const SmtpSettingsModal = ({ isOpen, onClose }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === "password") {
+      setPasswordChanged(true);
+    }
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -58,13 +65,20 @@ const SmtpSettingsModal = ({ isOpen, onClose }) => {
     setSaving(true);
     setMessage({ type: "", text: "" });
     try {
-      const res = await settingsAPI.updateSmtp(formData);
+      // Only include password if user actually typed a new one
+      const payload = { ...formData };
+      if (!passwordChanged) {
+        delete payload.password;
+      }
+      const res = await settingsAPI.updateSmtp(payload);
       if (res.success) {
         setMessage({ type: "success", text: "Pengaturan SMTP berhasil disimpan" });
-        // Update password field to masked value
+        setHasExistingPassword(!!res.data.hasPassword);
+        setPasswordChanged(false);
+        // Clear password field after save
         setFormData((prev) => ({
           ...prev,
-          password: res.data.password || "",
+          password: "",
         }));
       } else {
         setMessage({ type: "error", text: res.message || "Gagal menyimpan pengaturan" });
@@ -216,11 +230,17 @@ const SmtpSettingsModal = ({ isOpen, onClose }) => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="••••••••"
+                  placeholder={hasExistingPassword ? "Password tersimpan — kosongkan jika tidak ingin mengubah" : "Masukkan password"}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                {hasExistingPassword && !passwordChanged && (
+                  <p className="text-xs text-green-600 mt-1 flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                    Password sudah tersimpan. Kosongkan jika tidak ingin mengubah.
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">
-                  Untuk Gmail, gunakan App Password. Biarkan kosong jika tidak ingin mengubah.
+                  Untuk Gmail, gunakan App Password.
                 </p>
               </div>
 

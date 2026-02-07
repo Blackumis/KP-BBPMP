@@ -77,19 +77,37 @@ export const generateEventAttendanceReport = async (req, res) => {
     const downloadName = `Laporan Absensi - ${safeEventTitle} (${eventDate}).pdf`;
 
     // Set proper headers for PDF download
+    // NOTE: Do NOT set Content-Length when compression middleware is active
+    // as it causes size mismatch and corrupted downloads
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(downloadName)}"`);
     res.setHeader('Content-Length', stats.size);
+    // Disable compression for this binary response
+    res.setHeader('Content-Encoding', 'identity');
 
-    // Stream the file instead of using res.download
+    // Stream the file
     const fileStream = fs.createReadStream(result.filepath);
+    
     fileStream.on('error', (err) => {
       console.error("File stream error:", err);
+      // Destroy the stream to prevent hanging
+      fileStream.destroy();
       if (!res.headersSent) {
         res.status(500).json({
           success: false,
           message: "Failed to stream PDF file",
         });
+      }
+    });
+
+    // Clean up the temp file after sending
+    res.on('finish', () => {
+      try {
+        if (fs.existsSync(result.filepath)) {
+          fs.unlinkSync(result.filepath);
+        }
+      } catch (e) {
+        // ignore cleanup errors
       }
     });
     

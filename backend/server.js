@@ -44,8 +44,18 @@ const UPLOADS_DIR = path.join(__dirname, "uploads");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Security
-app.use(compression());
+// Security - skip compression for binary/PDF responses to prevent corruption
+app.use(compression({
+  filter: (req, res) => {
+    // Don't compress PDF or binary file downloads
+    const contentType = res.getHeader('Content-Type');
+    if (contentType && (contentType.includes('application/pdf') || contentType.includes('application/octet-stream'))) {
+      return false;
+    }
+    // Fall back to default filter
+    return compression.filter(req, res);
+  }
+}));
 
 // CORS
 app.use(
