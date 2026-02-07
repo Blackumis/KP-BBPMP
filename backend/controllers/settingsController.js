@@ -87,8 +87,8 @@ export const updateSmtpSettings = async (req, res) => {
       secure: secure !== undefined ? secure : currentSettings.secure,
       user: user || currentSettings.user,
       fromName: fromName || currentSettings.fromName,
-      // Only update password if a new one is provided (not masked)
-      password: password && password !== "********" ? password : currentSettings.password,
+      // Only update password if a new non-empty value is explicitly provided
+      password: (password && password !== "********") ? password : currentSettings.password,
     };
     
     if (!writeSettings(newSettings)) {

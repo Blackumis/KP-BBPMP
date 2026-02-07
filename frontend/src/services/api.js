@@ -1,5 +1,8 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+// Export for use in components that need direct fetch
+export { API_BASE_URL };
+
 const getToken = () => localStorage.getItem("token");
 const setToken = (token) => localStorage.setItem("token", token);
 const removeToken = () => localStorage.removeItem("token");
@@ -163,6 +166,33 @@ export const reportAPI = {
     fetchWithAuth(`/attendance/events/${eventId}/attendance-report`, {
       method: "GET",
     }),
+  // Download attendance report as blob (for PDF)
+  downloadAttendanceReport: async (eventId) => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/attendance/events/${eventId}/attendance-report`, {
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+    
+    if (!response.ok) {
+      // Try to parse error message
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal download laporan');
+      }
+      throw new Error('Gagal download laporan');
+    }
+    
+    // Verify we got a PDF, not HTML
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/pdf')) {
+      throw new Error('Server tidak mengembalikan file PDF');
+    }
+    
+    return response.blob();
+  },
 };
 
 export const referenceAPI = {

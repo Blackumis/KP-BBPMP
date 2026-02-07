@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { attendanceAPI, certificateAPI } from "../services/api";
+import { attendanceAPI, certificateAPI, reportAPI } from "../services/api";
 import { downloadPDF} from "../utils/certificateUtils";
 import { showNotification } from "../components/Notification";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -355,23 +355,16 @@ const AttendanceList = ({ event, onBack }) => {
   const handleGenerateAttendanceReport = async () => {
     try {
       setEventLoading((prev) => ({ ...prev, generateReport: true }));
-      const token = localStorage.getItem("token");
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance/events/${event.id}/attendance-report`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Gagal download laporan");
-      }
-
-      const blob = await res.blob();
+      const blob = await reportAPI.downloadAttendanceReport(event.id);
       
       if (blob.size === 0) {
         throw new Error("File PDF kosong");
+      }
+
+      // Verify blob type is PDF
+      if (!blob.type.includes('application/pdf')) {
+        throw new Error("File yang diunduh bukan PDF");
       }
 
       const url = window.URL.createObjectURL(blob);

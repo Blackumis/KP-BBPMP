@@ -18,6 +18,10 @@ node_modules/
 .env.*
 !.env.example
 
+# SMTP credentials
+**/smtp-settings.json
+!**/smtp-settings.example.json
+
 # ===================================
 # Build Outputs
 # ===================================
@@ -97,10 +101,14 @@ uploads/
 !uploads/.gitkeep
 certificates/
 !certificates/.gitkeep
+reports/
+!reports/.gitkeep
 backend/uploads/
 !backend/uploads/.gitkeep
 backend/certificates/
 !backend/certificates/.gitkeep
+backend/reports/
+!backend/reports/.gitkeep
 
 # ===================================
 # Database

@@ -342,14 +342,21 @@ export const generateAttendanceReport = async (eventTitle, eventDate, attendance
 
       if (kopAbsolutePath && fs.existsSync(kopAbsolutePath)) {
         try {
-          doc.image(kopAbsolutePath, 50, 30, {
-            width: 495,
-            align: "center",
-          });
-          doc.moveDown(9);
-          console.log('Kop image added successfully');
+          const kopStats = fs.statSync(kopAbsolutePath);
+          const kopExt = path.extname(kopAbsolutePath).toLowerCase();
+          const validImageExts = ['.png', '.jpg', '.jpeg', '.gif', '.bmp'];
+          if (kopStats.size > 100 && validImageExts.includes(kopExt)) {
+            doc.image(kopAbsolutePath, 50, 30, {
+              width: 495,
+            });
+            doc.moveDown(9);
+            console.log('Kop image added successfully');
+          } else {
+            console.warn('Kop image skipped: invalid file size or extension');
+          }
         } catch (imgErr) {
           console.error('Kop image error:', imgErr.message);
+          // Don't fail the entire PDF for a kop image error
         }
       }
 
@@ -373,32 +380,39 @@ export const generateAttendanceReport = async (eventTitle, eventDate, attendance
 
       const tableWidth = 495;
 
-      /* ===== TABLE HEADER BACKGROUND ===== */
-      doc.rect(50, tableTop, tableWidth, headerHeight).fillAndStroke("#d3d3d3", "#000000");
+      /* ===== HELPER: Draw table header on current page ===== */
+      const drawTableHeader = (startY) => {
+        doc.rect(50, startY, tableWidth, headerHeight).fillAndStroke("#d3d3d3", "#000000");
+        doc.fillColor("#000000").font("Helvetica-Bold").fontSize(10);
+        doc.text("No", col.no, startY + 7, { width: 25, align: "center" });
+        doc.text("Nama Lengkap", col.nama, startY + 7, { width: 115, align: "center" });
+        doc.text("Unit Kerja", col.unit, startY + 7, { width: 115, align: "center" });
+        doc.text("Kabupaten/Kota", col.kota, startY + 7, { width: 115, align: "center" });
+        doc.text("Tanda Tangan", col.ttd, startY + 7, { width: 105, align: "center" });
+        // Vertical lines for header
+        doc.strokeColor("#000000");
+        doc.moveTo(col.nama - 5, startY).lineTo(col.nama - 5, startY + headerHeight).stroke();
+        doc.moveTo(col.unit - 5, startY).lineTo(col.unit - 5, startY + headerHeight).stroke();
+        doc.moveTo(col.kota - 5, startY).lineTo(col.kota - 5, startY + headerHeight).stroke();
+        doc.moveTo(col.ttd - 5, startY).lineTo(col.ttd - 5, startY + headerHeight).stroke();
+        return startY + headerHeight;
+      };
 
-      /* ===== TABLE HEADER TEXT ===== */
-      doc.fillColor("#000000").font("Helvetica-Bold").fontSize(10);
-      doc.text("No", col.no, tableTop + 7, { width: 25, align: "center" });
-      doc.text("Nama Lengkap", col.nama, tableTop + 7, { width: 115, align: "center" });
-      doc.text("Unit Kerja", col.unit, tableTop + 7, { width: 115, align: "center" });
-      doc.text("Kabupaten/Kota", col.kota, tableTop + 7, { width: 115, align: "center" });
-      doc.text("Tanda Tangan", col.ttd, tableTop + 7, { width: 105, align: "center" });
-
-      /* ===== VERTICAL LINES FOR HEADER ===== */
-      doc.strokeColor("#000000");
-      doc.moveTo(col.nama - 5, tableTop).lineTo(col.nama - 5, tableTop + headerHeight).stroke();
-      doc.moveTo(col.unit - 5, tableTop).lineTo(col.unit - 5, tableTop + headerHeight).stroke();
-      doc.moveTo(col.kota - 5, tableTop).lineTo(col.kota - 5, tableTop + headerHeight).stroke();
-      doc.moveTo(col.ttd - 5, tableTop).lineTo(col.ttd - 5, tableTop + headerHeight).stroke();
+      /* ===== DRAW FIRST PAGE TABLE HEADER ===== */
+      drawTableHeader(tableTop);
 
       /* ===== ROWS ===== */
       doc.font("Helvetica").fontSize(10);
       let y = tableTop + headerHeight;
 
       attendanceList.forEach((item, index) => {
-        if (y > doc.page.height - 100) {
+        if (y + rowHeight > doc.page.height - 60) {
+          // Draw bottom border for last row before page break
+          doc.moveTo(50, y).lineTo(545, y).stroke();
           doc.addPage();
-          y = 150;
+          // Redraw table header on new page
+          y = drawTableHeader(50);
+          doc.font("Helvetica").fontSize(10);
         }
 
         doc.strokeColor("#000000");
@@ -413,30 +427,37 @@ export const generateAttendanceReport = async (eventTitle, eventDate, attendance
         const signatureField = item.signature_path || item.signature_url;
 
         if (signatureField) {
-          let signaturePath;
+          let signaturePath = null;
 
           try {
-            if (signatureField.startsWith("http://") || signatureField.startsWith("https://")) {
-              const urlObj = new URL(signatureField);
-              const relativePath = urlObj.pathname;
-              signaturePath = path.join(__dirname, "..", relativePath);
+            // Skip data URIs — they can't be loaded as file paths
+            if (signatureField.startsWith("data:")) {
+              // Data URIs can't be rendered as file images
+              doc.text("-", col.ttd, y + 7, { width: 105, align: "center" });
             } else {
-              signaturePath = path.join(__dirname, "..", signatureField);
-            }
+              if (signatureField.startsWith("http://") || signatureField.startsWith("https://")) {
+                const urlObj = new URL(signatureField);
+                const relativePath = urlObj.pathname;
+                signaturePath = path.join(__dirname, "..", relativePath);
+              } else {
+                signaturePath = path.join(__dirname, "..", signatureField);
+              }
 
-            if (fs.existsSync(signaturePath)) {
-              const stats = fs.statSync(signaturePath);
-              if (stats.size > 0) {
-                doc.image(signaturePath, col.ttd + 10, y + 5, {
-                  width: 95,
-                  height: 30,
-                  fit: [95, 30],
-                });
+              if (signaturePath && fs.existsSync(signaturePath)) {
+                const stats = fs.statSync(signaturePath);
+                // Verify file is a valid image (minimum size check + extension check)
+                const validExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp'];
+                const fileExt = path.extname(signaturePath).toLowerCase();
+                if (stats.size > 100 && validExtensions.includes(fileExt)) {
+                  doc.image(signaturePath, col.ttd + 10, y + 2, {
+                    fit: [85, 28],
+                  });
+                } else {
+                  doc.text("-", col.ttd, y + 7, { width: 105, align: "center" });
+                }
               } else {
                 doc.text("-", col.ttd, y + 7, { width: 105, align: "center" });
               }
-            } else {
-              doc.text("-", col.ttd, y + 7, { width: 105, align: "center" });
             }
           } catch (imgErr) {
             console.error(`Signature error for ${item.nama_lengkap}:`, imgErr.message);
