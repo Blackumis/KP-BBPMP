@@ -11,10 +11,7 @@ export const generateAttendanceTokenHandler = async (req, res) => {
     if (events.length === 0) {
       return res.status(404).json({ success: false, message: "Event not found" });
     }
-    // Only active events can have tokens
-    if (events[0].status !== "active") {
-      return res.status(403).json({ success: false, message: "Event is not active" });
-    }
+    // Token generation is allowed regardless of event status (start time may be in future)
 
     const token = generateAttendanceToken(event_id);
     res.json({ success: true, token });
@@ -43,35 +40,36 @@ export const getEventForm = async (req, res) => {
     const activity_id = decoded.activity_id;
 
     const [events] = await pool.query(
-      `SELECT id, nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, 
-              jam_mulai, jam_selesai, batas_waktu_absensi, form_config, status
-       FROM kegiatan WHERE id = ? AND status = 'active'`,
+      `SELECT id, nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
+              jam_mulai, jam_selesai, batas_waktu_absensi, mulai_waktu_absensi, form_config, status
+       FROM kegiatan WHERE id = ?`,
       [activity_id],
     );
 
     if (events.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found or not active",
-      });
+      return res.status(404).json({ success: false, message: "Event not found" });
     }
 
     const event = events[0];
 
-    // Check if deadline has passed
+    // Determine time phases
     const now = new Date();
-    const deadline = new Date(event.batas_waktu_absensi);
+    const start = event.mulai_waktu_absensi ? new Date(event.mulai_waktu_absensi) : null;
+    const deadline = event.batas_waktu_absensi ? new Date(event.batas_waktu_absensi) : null;
 
-    if (now > deadline) {
-      return res.status(403).json({
-        success: false,
-        message: "Attendance deadline has passed",
-      });
+    if (deadline && now > deadline) {
+      return res.status(403).json({ success: false, message: "Absensi telah berakhir" });
     }
+
+    // If not started yet, still return event data but include flag so frontend can show message
+    const started = !start || now >= start;
 
     res.json({
       success: true,
-      data: event,
+      data: {
+        ...event,
+        started,
+      },
     });
   } catch (error) {
     console.error("Get event form error:", error);
@@ -141,31 +139,24 @@ export const submitAttendance = async (req, res) => {
       });
     }
 
-    // Check if event exists and is active
-    const [events] = await pool.query("SELECT id, status, batas_waktu_absensi, nomor_surat FROM kegiatan WHERE id = ?", [event_id]);
+    // Check if event exists
+    const [events] = await pool.query("SELECT id, status, batas_waktu_absensi, mulai_waktu_absensi, nomor_surat FROM kegiatan WHERE id = ?", [event_id]);
 
     if (events.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found",
-      });
+      return res.status(404).json({ success: false, message: "Event not found" });
     }
 
-    if (events[0].status !== "active") {
-      return res.status(403).json({
-        success: false,
-        message: "Event is not active",
-      });
-    }
-
-    // Check deadline
+    // Time-based validation: ensure now >= start (if provided) and now <= deadline
     const now = new Date();
-    const deadline = new Date(events[0].batas_waktu_absensi);
-    if (now > deadline) {
-      return res.status(403).json({
-        success: false,
-        message: "Attendance deadline has passed",
-      });
+    const start = events[0].mulai_waktu_absensi ? new Date(events[0].mulai_waktu_absensi) : null;
+    const deadline = events[0].batas_waktu_absensi ? new Date(events[0].batas_waktu_absensi) : null;
+
+    if (start && now < start) {
+      return res.status(403).json({ success: false, message: "Absensi belum dimulai" });
+    }
+
+    if (deadline && now > deadline) {
+      return res.status(403).json({ success: false, message: "Absensi telah berakhir" });
     }
 
     // Check for duplicate attendance

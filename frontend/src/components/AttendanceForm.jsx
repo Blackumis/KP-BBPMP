@@ -14,8 +14,14 @@ const AttendanceForm = ({ eventId }) => {
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  const [hasStarted, setHasStarted] = useState(false);
+  const [hasEnded, setHasEnded] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
   const [provinceType, setProvinceType] = useState("Jawa Tengah");
   const [kabupatenList, setKabupatenList] = useState([]);
+
+  const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
   // Validation errors state
   const [validationErrors, setValidationErrors] = useState({});
@@ -176,7 +182,9 @@ const AttendanceForm = ({ eventId }) => {
         const response = await attendanceAPI.getEventForm(eventId);
         if (response.success) {
           const formConfig = typeof response.data.form_config === "string" ? JSON.parse(response.data.form_config) : response.data.form_config || {};
-          setConfig({ ...response.data, ...formConfig });
+          const merged = { ...response.data, ...formConfig };
+          setConfig(merged);
+
           if (!formConfig.eventPassword) {
             setAccessGranted(true);
           }
@@ -204,9 +212,39 @@ const AttendanceForm = ({ eventId }) => {
     loadKabupaten();
   }, [eventId]);
 
+  // Single interval for all time-related updates (every second for accuracy)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setCurrentTime(now);
+
+      if (config) {
+        const start = config.mulai_waktu_absensi ? new Date(config.mulai_waktu_absensi) : null;
+        const deadline = config.batas_waktu_absensi ? new Date(config.batas_waktu_absensi) : null;
+
+        // Update hasStarted and countdown
+        if (!start || now >= start.getTime()) {
+          setHasStarted(true);
+          setCountdown({ hours: 0, minutes: 0, seconds: 0 });
+        } else if (!hasStarted) {
+          const diff = start.getTime() - now;
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          setCountdown({ hours, minutes, seconds });
+        }
+
+        // Update hasEnded
+        setHasEnded(!!(deadline && now > deadline.getTime()));
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [config, hasStarted]);
+
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
-    const formConfig = typeof config.form_config === "string" ? JSON.parse(config.form_config) : config.form_config || {};
+    const formConfig = config.form_config || {};
 
     if (passwordInput === formConfig.eventPassword) {
       setAccessGranted(true);
@@ -218,7 +256,7 @@ const AttendanceForm = ({ eventId }) => {
   };
 
   const formatDate = (dateString) => {
-    const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+    const options = { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Jakarta" };
     return dateString ? new Date(dateString).toLocaleDateString("id-ID", options) : "";
   };
 
@@ -226,6 +264,7 @@ const AttendanceForm = ({ eventId }) => {
     if (!timeString) return "";
     return timeString.substring(0, 5);
   };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -258,6 +297,12 @@ const AttendanceForm = ({ eventId }) => {
     }
 
     if (name === "provinsi") setProvinceType(value);
+  };
+
+  const handleProvinceChange = (value) => {
+    setProvinceType(value);
+    setFormData((prev) => ({ ...prev, provinsi: value, kabupaten_kota: "" }));
+    setValidationErrors((prev) => ({ ...prev, kabupaten_kota: "" }));
   };
 
   const handleSubmit = async (e) => {
@@ -413,6 +458,65 @@ const AttendanceForm = ({ eventId }) => {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Tidak Dapat Mengakses</h2>
           <p className="text-gray-600 mb-6">{formError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (config && !hasStarted) {
+    const startTime = config.mulai_waktu_absensi ? new Date(config.mulai_waktu_absensi) : null;
+    const serverMsg = formError || config.start_message || config.message || `Absensi untuk kegiatan ${config.nama_kegiatan} belum dimulai. Silakan kembali lagi ketika absensi dibuka.`;
+
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Absensi Belum Dibuka</h2>
+          <p className="text-gray-600 mb-6">{serverMsg}</p>
+
+          {startTime && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800 mb-3">
+                <strong>Waktu Mulai Absensi:</strong>
+              </p>
+              <p className="text-base font-bold text-blue-900 mb-4">
+                {startTime.toLocaleString("id-ID", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "Asia/Jakarta",
+                })}{" "}
+                WIB
+              </p>
+
+              {/* Countdown */}
+              <div className="flex justify-center items-center gap-2 bg-white rounded-lg p-3 shadow-sm">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600 font-mono">{String(countdown.hours).padStart(2, "0")}</div>
+                  <div className="text-xs text-gray-500 font-semibold">JAM</div>
+                </div>
+                <div className="text-2xl font-bold text-blue-600">:</div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600 font-mono">{String(countdown.minutes).padStart(2, "0")}</div>
+                  <div className="text-xs text-gray-500 font-semibold">MENIT</div>
+                </div>
+                <div className="text-2xl font-bold text-blue-600">:</div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600 font-mono">{String(countdown.seconds).padStart(2, "0")}</div>
+                  <div className="text-xs text-gray-500 font-semibold">DETIK</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <p className="text-sm text-gray-500">Halaman akan otomatis dimuat ulang saat waktu absensi dimulai.</p>
         </div>
       </div>
     );
@@ -769,17 +873,7 @@ const AttendanceForm = ({ eventId }) => {
                         provinceType === "Jawa Tengah" ? "border-blue-500 bg-white text-blue-700 font-semibold shadow-sm" : "border-blue-100 text-gray-600 hover:bg-gray-100"
                       }`}
                     >
-                      <input
-                        type="radio"
-                        name="province_type"
-                        value="Jawa Tengah"
-                        checked={provinceType === "Jawa Tengah"}
-                        onChange={(e) => {
-                          setProvinceType(e.target.value);
-                          setFormData((prev) => ({ ...prev, provinsi: e.target.value }));
-                        }}
-                        className="hidden"
-                      />
+                      <input type="radio" name="province_type" value="Jawa Tengah" checked={provinceType === "Jawa Tengah"} onChange={(e) => handleProvinceChange(e.target.value)} className="hidden" />
                       <span className="text-sm">Jawa Tengah</span>
                     </label>
                     <label
@@ -792,16 +886,7 @@ const AttendanceForm = ({ eventId }) => {
                         name="province_type"
                         value="Luar Jawa Tengah"
                         checked={provinceType === "Luar Jawa Tengah"}
-                        onChange={(e) => {
-                          handleChange(e);
-                          setProvinceType(e.target.value);
-                          setFormData((prev) => ({
-                            ...prev,
-                            kabupaten_kota: "",
-                          }));
-                          // Clear validation error
-                          setValidationErrors((prev) => ({ ...prev, kabupaten_kota: "" }));
-                        }}
+                        onChange={(e) => handleProvinceChange(e.target.value)}
                         className="hidden"
                       />
                       <span className="text-sm">Luar Jawa Tengah</span>
@@ -954,9 +1039,11 @@ const AttendanceForm = ({ eventId }) => {
               )}
               {/* Submit Button */}
               <div className="pt-4">
+                {hasEnded && <div className="mb-3 p-3 bg-red-50 border-l-4 border-red-400 rounded text-sm text-red-800">Absensi telah berakhir.</div>}
+                {!hasStarted && <div className="mb-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded text-sm text-yellow-800">Absensi belum dimulai. Silakan tunggu sampai absensi dibuka.</div>}
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !hasStarted || hasEnded}
                   className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold text-base md:text-lg py-4 rounded-xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
@@ -1003,6 +1090,7 @@ const AttendanceForm = ({ eventId }) => {
                     year: "numeric",
                     hour: "2-digit",
                     minute: "2-digit",
+                    timeZone: "Asia/Jakarta",
                   })
                   .replace(/\./g, ":")}{" "}
                 WIB

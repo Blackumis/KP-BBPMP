@@ -404,7 +404,7 @@ const AttendanceList = ({ event, onBack }) => {
 
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
+      <div className="mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg">Memuat data...</p>
         </div>
@@ -424,7 +424,7 @@ const AttendanceList = ({ event, onBack }) => {
         type={confirmDialog.type}
       />
 
-      <div className="max-w-6xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
+      <div className="mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
         <div className="flex justify-between items-center mb-6 border-b pb-4">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center">
             <span className="bg-blue-100 text-blue-700 py-1 px-3 rounded text-sm mr-3">Admin</span>

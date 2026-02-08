@@ -48,6 +48,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     tanggal_selesai: "",
     jam_mulai: "",
     jam_selesai: "",
+    mulai_waktu_absensi: "",
     batas_waktu_absensi: "",
     official_id: "",
     templateSource: "upload", // 'upload' or 'template'
@@ -193,6 +194,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
       nama_kegiatan: editEvent.nama_kegiatan || prev.nama_kegiatan,
       tanggal_mulai: formatDate(editEvent.tanggal_mulai),
       tanggal_selesai: formatDate(editEvent.tanggal_selesai) || formatDate(editEvent.tanggal_mulai),
+      mulai_waktu_absensi: formatDateTimeLocal(editEvent.mulai_waktu_absensi),
       batas_waktu_absensi: formatDateTimeLocal(editEvent.batas_waktu_absensi),
       jam_mulai: editEvent.jam_mulai || prev.jam_mulai,
       jam_selesai: editEvent.jam_selesai || prev.jam_selesai,
@@ -261,6 +263,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
         tanggal_selesai: formData.tanggal_selesai || formData.tanggal_mulai,
         jam_mulai: formData.jam_mulai,
         jam_selesai: formData.jam_selesai,
+        mulai_waktu_absensi: formData.mulai_waktu_absensi || null,
         batas_waktu_absensi: formData.batas_waktu_absensi,
         official_id: formData.official_id || null,
         form_config,
@@ -420,6 +423,18 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                   required
                 />
               </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Attendance Start Time</label>
+                <input
+                  type="datetime-local"
+                  name="mulai_waktu_absensi"
+                  value={formData.mulai_waktu_absensi}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+                <p className="text-xs text-gray-500 mt-1">Opsional; disarankan jika Anda menambahkan Batas Waktu Absensi.</p>
+              </div>
+
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Batas Waktu Absensi <span className="text-red-500">*</span>

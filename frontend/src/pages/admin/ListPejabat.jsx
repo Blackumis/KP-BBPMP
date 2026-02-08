@@ -8,7 +8,7 @@ const ListPejabat = () => {
 
   return (
     <>
-    <div className="max-w-6xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
+    <div className="max-w-7xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
       {/* Admin Navigation Tabs */}
       <div className="flex gap-2 mb-6 border-b">
         <Link to="/admin" className="px-4 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:text-blue-600 hover:bg-gray-50">
