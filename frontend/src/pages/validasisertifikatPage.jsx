@@ -13,6 +13,7 @@ const ValidasiSertifikat = () => {
   const [downloading, setDownloading] = useState(false);
 
   console.log("Certificate number from URL:", certificateNumber);
+  const formatJam = (jam) => jam?.slice(0, 5);
 
   const handleDownloadPDF = async () => {
     try {
@@ -40,7 +41,8 @@ const ValidasiSertifikat = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
-      showNotification("Gagal mengunduh sertifikat: " + err.message, "error");
+      console.error("Download error:", err);
+      alert("Gagal mengunduh sertifikat: " + err.message);
     } finally {
       setDownloading(false);
     }
@@ -118,6 +120,9 @@ const ValidasiSertifikat = () => {
     );
   }
 
+  // Check if tanggal_mulai and tanggal_selesai are the same
+  const isSameDate = validationData?.event?.tanggal_mulai === validationData?.event?.tanggal_selesai;
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800">
       <Header isAuthenticated={false} user={null} onLogout={() => {}} />
@@ -138,7 +143,7 @@ const ValidasiSertifikat = () => {
 
           {/* Certificate Info Card */}
           <div className="bg-white shadow-xl rounded-lg overflow-hidden mb-6">
-            <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
               <h2 className="text-xl font-bold text-white">Informasi Sertifikat</h2>
             </div>
             <div className="px-6 py-4">
@@ -148,27 +153,9 @@ const ValidasiSertifikat = () => {
                   <p className="text-lg font-mono font-semibold text-gray-900">{validationData?.certificate?.nomor_sertifikat}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <p className="text-lg font-semibold text-gray-900">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-                        validationData?.certificate?.status === "sertifikat_terkirim" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                      }`}
-                    >
-                      {validationData?.certificate?.status === "sertifikat_terkirim" ? "Terkirim" : "Menunggu Pengiriman"}
-                    </span>
-                  </p>
-                </div>
-                <div>
                   <label className="text-sm font-medium text-gray-500">Tanggal Diterbitkan</label>
                   <p className="text-lg text-gray-900">{validationData?.certificate?.tanggal_diterbitkan}</p>
                 </div>
-                {validationData?.certificate?.tanggal_dikirim && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Tanggal Dikirim</label>
-                    <p className="text-lg text-gray-900">{validationData?.certificate?.tanggal_dikirim}</p>
-                  </div>
-                )}
               </div>
 
               {/* Download Button */}
@@ -196,7 +183,7 @@ const ValidasiSertifikat = () => {
 
           {/* Participant Info Card */}
           <div className="bg-white shadow-xl rounded-lg overflow-hidden mb-6">
-            <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
               <h2 className="text-xl font-bold text-white">Data Peserta</h2>
             </div>
             <div className="px-6 py-4">
@@ -205,12 +192,6 @@ const ValidasiSertifikat = () => {
                   <label className="text-sm font-medium text-gray-500">Nama Lengkap</label>
                   <p className="text-lg font-semibold text-gray-900">{validationData?.participant?.nama_lengkap}</p>
                 </div>
-                {validationData?.participant?.nip && validationData?.participant?.nip !== "-" && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">NIP</label>
-                    <p className="text-lg text-gray-900">{validationData?.participant?.nip}</p>
-                  </div>
-                )}
                 <div>
                   <label className="text-sm font-medium text-gray-500">Unit Kerja</label>
                   <p className="text-lg text-gray-900">{validationData?.participant?.unit_kerja}</p>
@@ -223,23 +204,13 @@ const ValidasiSertifikat = () => {
                   <label className="text-sm font-medium text-gray-500">Kabupaten/Kota</label>
                   <p className="text-lg text-gray-900">{validationData?.participant?.kabupaten_kota}</p>
                 </div>
-                {validationData?.participant?.tanggal_lahir && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Tanggal Lahir</label>
-                    <p className="text-lg text-gray-900">{validationData?.participant?.tanggal_lahir}</p>
-                  </div>
-                )}
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Nomor HP</label>
-                  <p className="text-lg text-gray-900">{validationData?.participant?.nomor_hp || "-"}</p>
-                </div>
-                {validationData?.participant?.pangkat_golongan && (
+                {validationData?.participant?.pangkat_golongan && validationData?.participant?.pangkat_golongan !== "-" && (
                   <div>
                     <label className="text-sm font-medium text-gray-500">Pangkat/Golongan</label>
                     <p className="text-lg text-gray-900">{validationData?.participant?.pangkat_golongan}</p>
                   </div>
                 )}
-                {validationData?.participant?.jabatan && (
+                {validationData?.participant?.jabatan && validationData?.participant?.jabatan !== "-" && (
                   <div>
                     <label className="text-sm font-medium text-gray-500">Jabatan</label>
                     <p className="text-lg text-gray-900">{validationData?.participant?.jabatan}</p>
@@ -255,7 +226,7 @@ const ValidasiSertifikat = () => {
 
           {/* Event Info Card */}
           <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-            <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
               <h2 className="text-xl font-bold text-white">Informasi Kegiatan</h2>
             </div>
             <div className="px-6 py-4">
@@ -265,22 +236,43 @@ const ValidasiSertifikat = () => {
                   <p className="text-lg font-semibold text-gray-900">{validationData?.event?.nama_kegiatan}</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Tanggal Mulai</label>
-                    <p className="text-lg text-gray-900">{validationData?.event?.tanggal_mulai}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Tanggal Selesai</label>
-                    <p className="text-lg text-gray-900">{validationData?.event?.tanggal_selesai}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Jam Mulai</label>
-                    <p className="text-lg text-gray-900">{validationData?.event?.jam_mulai}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Jam Selesai</label>
-                    <p className="text-lg text-gray-900">{validationData?.event?.jam_selesai}</p>
-                  </div>
+                  {isSameDate ? (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Tanggal</label>
+                      <p className="text-lg text-gray-900">{validationData?.event?.tanggal_mulai}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Tanggal Mulai</label>
+                        <p className="text-lg text-gray-900">{validationData?.event?.tanggal_mulai}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Tanggal Selesai</label>
+                        <p className="text-lg text-gray-900">{validationData?.event?.tanggal_selesai}</p>
+                      </div>
+                    </>
+                  )}
+
+                  {isSameDate ? (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Pukul</label>
+                      <p className="text-lg text-gray-900">
+                        {formatJam(validationData?.event?.jam_mulai)} - {formatJam(validationData?.event?.jam_selesai)} WIB
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Jam Mulai</label>
+                        <p className="text-lg text-gray-900">{formatJam(validationData?.event?.jam_mulai)} WIB</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Jam Selesai</label>
+                        <p className="text-lg text-gray-900">{formatJam(validationData?.event?.jam_selesai)} WIB</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

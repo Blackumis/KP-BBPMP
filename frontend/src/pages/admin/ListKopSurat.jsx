@@ -159,7 +159,7 @@ const ListKopSurat = () => {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
+      <div className="max-w-7xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg">Memuat data...</p>
         </div>
@@ -179,7 +179,7 @@ const ListKopSurat = () => {
         type={confirmDialog.type}
       />
 
-      <div className="max-w-6xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
+      <div className="max-w-7xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
         {/* Admin Navigation Tabs */}
         <div className="flex gap-2 mb-6 border-b">
           <Link to="/admin" className="px-4 py-2 border-b-2 border-transparent text-gray-600 font-semibold hover:text-blue-600 hover:bg-gray-50">

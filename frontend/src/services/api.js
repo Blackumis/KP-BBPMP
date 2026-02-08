@@ -74,6 +74,9 @@ export const eventsAPI = {
     formData.append("jam_mulai", eventData.jam_mulai);
     formData.append("jam_selesai", eventData.jam_selesai);
     formData.append("batas_waktu_absensi", eventData.batas_waktu_absensi);
+    if (eventData.mulai_waktu_absensi) {
+      formData.append("mulai_waktu_absensi", eventData.mulai_waktu_absensi);
+    }
     formData.append("form_config", JSON.stringify(eventData.form_config || {}));
     formData.append("template_source", eventData.template_source || "upload");
     if (eventData.official_id) {
@@ -277,4 +280,14 @@ export const settingsAPI = {
   testSmtp: async (settings) => fetchWithAuth("/settings/smtp/test", { method: "POST", body: JSON.stringify(settings) }),
 };
 
-export default { auth: authAPI, events: eventsAPI, attendance: attendanceAPI, reference: referenceAPI, kopSurat: kopSuratAPI, certificate: certificateAPI, templates: templatesAPI, officials: officialsAPI, settings: settingsAPI };
+export default {
+  auth: authAPI,
+  events: eventsAPI,
+  attendance: attendanceAPI,
+  reference: referenceAPI,
+  kopSurat: kopSuratAPI,
+  certificate: certificateAPI,
+  templates: templatesAPI,
+  officials: officialsAPI,
+  settings: settingsAPI,
+};

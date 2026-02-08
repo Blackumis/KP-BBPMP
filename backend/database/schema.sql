@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS kegiatan (
   tanggal_selesai DATE NOT NULL,
   jam_mulai TIME NOT NULL,
   jam_selesai TIME NOT NULL,
+  mulai_waktu_absensi DATETIME NULL,
   batas_waktu_absensi DATETIME NOT NULL,
   template_sertifikat VARCHAR(255) NULL,
   template_id INT NULL COMMENT 'Reference to template_sertif table',

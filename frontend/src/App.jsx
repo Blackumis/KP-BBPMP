@@ -4,7 +4,6 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-
 
 import MainLayout from "./layouts/MainLayout";
 import LoginPage from "./pages/loginPage";
-import DaftarKegiatanPage from "./pages/daftarkegiatanPage";
 import AttendancePage from "./pages/attendancePage";
 import AttendancelistPage from "./pages/attendancelistPage";
 import AdminPage from "./pages/adminPage";
@@ -69,25 +68,6 @@ export default function App() {
 
       {/* Public route without MainLayout - Isolated attendance page (token-based) */}
       <Route path="/attendance/:token" element={<AttendancePage />} />
-
-      {/* Protected routes (with layout) */}
-      <Route
-        path="/daftarkegiatan"
-        element={
-          <MainLayout
-            isAuthenticated={isAuth}
-            user={user}
-            onLogout={() => {
-              authAPI.logout();
-              navigate("/login", { replace: true });
-            }}
-          >
-            <ProtectedRoute>
-              <DaftarKegiatanPage />
-            </ProtectedRoute>
-          </MainLayout>
-        }
-      />
 
       <Route
         path="/attendancelist/:id/:name"
