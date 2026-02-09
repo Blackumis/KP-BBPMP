@@ -8,7 +8,75 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// Routes
+// Load environment variables
+dotenv.config();
+
+// Resolve __dirname in ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure directory exists
+const ensureDir = (dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+};
+
+// Upload directories
+const UPLOADS_DIR = path.join(__dirname, "uploads");
+ensureDir(UPLOADS_DIR);
+["templates", "signatures", "kop-surat", "pejabat/signatures", "pejabat/qrcode"].forEach((folder) => ensureDir(path.join(UPLOADS_DIR, folder)));
+
+// Download directories
+const DOWNLOADS_DIR = path.join(__dirname, "downloads");
+ensureDir(DOWNLOADS_DIR);
+["certificates", "reports"].forEach((folder) => ensureDir(path.join(DOWNLOADS_DIR, folder)));
+
+// Initialize Express app
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Enable security headers
+app.use(helmet());
+
+// Enable compression
+app.use(compression());
+
+// Configure CORS
+app.use(
+  cors({
+    origin: process.env.NODE_ENV === "production" ? true : ["http://localhost:5173", "http://localhost:2000", "http://localhost:3000"],
+    credentials: true,
+  }),
+);
+
+// Parse JSON body
+app.use(express.json({ limit: "10mb" }));
+
+// Parse URL-encoded body
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Apply rate limiting to API
+app.use(
+  "/api",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req, res) => {
+      res.status(429).json({
+        success: false,
+        message: "Too many requests, please try again later.",
+      });
+    },
+  }),
+);
+
+// Serve downloadable files
+app.use("/downloads", express.static(DOWNLOADS_DIR));
+
+// Import API routes
 import authRoutes from "./routes/authRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
@@ -19,63 +87,7 @@ import kopSuratRoutes from "./routes/kopSuratRoutes.js";
 import officialRoutes from "./routes/officialRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const ensureDir = (dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-};
-
-const UPLOADS_DIR = path.join(__dirname, "uploads");
-
-["templates", "signatures", "kop-surat", "pejabat/signatures", "pejabat/qrcode"].forEach((folder) => {
-  ensureDir(path.join(UPLOADS_DIR, folder));
-});
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Security
-app.use(compression());
-
-// CORS
-app.use(
-  cors({
-    origin: process.env.NODE_ENV === "production" ? true : ["http://localhost:5173", "http://localhost:2000", "http://localhost:3000"],
-    credentials: true,
-  }),
-);
-
-// Body parser
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// Rate limit API
-app.use(
-  "/api/",
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 1000,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: (req, res) => {
-      res.status(429).json({
-        success: false,
-        message: "Too many requests, please try again later.",
-      });
-    },
-  }),
-);
-
-// Static uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/certificates", express.static(path.join(__dirname, "certificates")));
-
-// API routes
+// Register API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/attendance", attendanceRoutes);
@@ -86,40 +98,35 @@ app.use("/api/officials", officialRoutes);
 app.use("/api/kop-surat", kopSuratRoutes);
 app.use("/api/settings", settingsRoutes);
 
-// Health check
-app.get("/api/health", (req, res) => {
+// API health check
+app.get("/api/health", (_req, res) => {
   res.json({ status: "OK" });
 });
 
-// === FRONTEND STATIC ===
+// Serve frontend build
 app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-// Read index.html template once and reuse (fast and simple)
+// Read index.html for SPA
 const indexPath = path.join(__dirname, "public", "index.html");
 let indexHtmlTemplate = null;
+
 try {
   indexHtmlTemplate = fs.readFileSync(indexPath, "utf8");
 } catch (err) {
-  console.error("Could not read index.html template:", err);
-  indexHtmlTemplate = null;
+  console.error("Failed to load index.html:", err);
 }
 
-function sendIndex(res) {
+// SPA fallback route
+app.get("*", (_req, res) => {
   if (!indexHtmlTemplate) {
     return res.status(500).send("index.html not available");
   }
-
   res.set("Content-Type", "text/html; charset=utf-8");
   res.send(indexHtmlTemplate);
-}
-
-// SPA fallback: serve index.html for any non-API route so the client-side router handles navigation
-app.get("*", (req, res) => {
-  sendIndex(res);
 });
 
-// Error handler (API only)
-app.use((err, req, res, next) => {
+// Global error handler
+app.use((err, _req, res, _next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({
     success: false,
@@ -127,6 +134,7 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Start HTTP server
 app.listen(PORT, () => {
-  console.log(`Production server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

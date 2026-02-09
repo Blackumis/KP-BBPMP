@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ensure certificates directory exists
-const certificatesDir = path.join(__dirname, "../certificates");
+const certificatesDir = path.join(__dirname, "../downloads/certificates");
 if (!fs.existsSync(certificatesDir)) {
   fs.mkdirSync(certificatesDir, { recursive: true });
 }
@@ -279,7 +279,7 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
         resolve({
           success: true,
           filename,
-          filepath: `certificates/${filename}`,
+          filepath: `downloads/certificates/${filename}`,
         });
       });
 
@@ -293,7 +293,7 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
 };
 
 // Definisi reportsDir di level module
-const reportsDir = path.join(__dirname, "../reports");
+const reportsDir = path.join(__dirname, "../downloads/reports");
 
 // Pastikan folder reports ada
 if (!fs.existsSync(reportsDir)) {

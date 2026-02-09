@@ -143,7 +143,7 @@ const ValidasiSertifikat = () => {
 
           {/* Certificate Info Card */}
           <div className="bg-white shadow-xl rounded-lg overflow-hidden mb-6">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4">
               <h2 className="text-xl font-bold text-white">Informasi Sertifikat</h2>
             </div>
             <div className="px-6 py-4">
@@ -183,7 +183,7 @@ const ValidasiSertifikat = () => {
 
           {/* Participant Info Card */}
           <div className="bg-white shadow-xl rounded-lg overflow-hidden mb-6">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4">
               <h2 className="text-xl font-bold text-white">Data Peserta</h2>
             </div>
             <div className="px-6 py-4">
@@ -226,7 +226,7 @@ const ValidasiSertifikat = () => {
 
           {/* Event Info Card */}
           <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4">
               <h2 className="text-xl font-bold text-white">Informasi Kegiatan</h2>
             </div>
             <div className="px-6 py-4">
