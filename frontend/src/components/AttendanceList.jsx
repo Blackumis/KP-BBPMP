@@ -8,7 +8,8 @@ const AttendanceList = ({ event, onBack }) => {
   const [attendances, setAttendances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [selectedItemsPerPage, setSelectedItemsPerPage] = useState(10); // New state for items per page
+  const [totalItems, setTotalItems] = useState(0);
 
   // Loading states for individual attendance actions
   const [loadingStates, setLoadingStates] = useState({});
@@ -30,12 +31,13 @@ const AttendanceList = ({ event, onBack }) => {
   });
 
   useEffect(() => {
-    const load = async () => {
+    const loadAttendances = async () => {
+      setIsLoading(true);
       try {
-        // Fetch ALL attendances without limit
-        const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 'all' });
+        const response = await attendanceAPI.getByEvent(event.id, { page: currentPage, limit: selectedItemsPerPage });
         if (response.success) {
           setAttendances(response.data.attendances || []);
+          setTotalItems(response.data.pagination?.total || 0);
         }
       } catch (err) {
         console.error("Failed to load attendances:", err);
@@ -44,8 +46,11 @@ const AttendanceList = ({ event, onBack }) => {
         setIsLoading(false);
       }
     };
-    load();
-  }, [event]);
+    if (event) {
+      loadAttendances();
+    }
+  }, [event, currentPage, selectedItemsPerPage]);
+
 
   // Helper to set loading state for a specific button action
   const setButtonLoading = (attendanceId, action, loading) => {
@@ -173,9 +178,10 @@ const AttendanceList = ({ event, onBack }) => {
 
             // Refresh attendance list
             try {
-              const refreshed = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 1000 });
+              const refreshed = await attendanceAPI.getByEvent(event.id, { page: currentPage, limit: selectedItemsPerPage });
               if (refreshed.success) {
                 setAttendances(refreshed.data.attendances || []);
+                setTotalItems(refreshed.data.pagination?.total || 0);
               }
             } catch (err) {
               console.error("Failed to refresh attendances:", err);
@@ -389,9 +395,10 @@ const AttendanceList = ({ event, onBack }) => {
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
-      const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 1000 });
+      const response = await attendanceAPI.getByEvent(event.id, { page: currentPage, limit: selectedItemsPerPage });
       if (response.success) {
         setAttendances(response.data.attendances || []);
+        setTotalItems(response.data.pagination?.total || 0);
         showNotification("Data berhasil dimuat ulang", "success");
       }
     } catch (err) {
@@ -411,6 +418,51 @@ const AttendanceList = ({ event, onBack }) => {
       </div>
     );
   }
+
+  const totalPages = Math.ceil(totalItems / selectedItemsPerPage);
+
+  const getPaginationRange = (currentPage, totalPages, siblingCount = 1) => {
+    const totalPageNumbers = siblingCount * 2 + 3; // e.g., 1 ... 4 5 [6] 7 8 ... 10
+
+    if (totalPageNumbers >= totalPages) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
+    const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
+
+    const shouldShowLeftDots = leftSiblingIndex > 2;
+    const shouldShowRightDots = rightSiblingIndex < totalPages - 2; // Adjusted for better behavior
+
+    const firstPageIndex = 1;
+    const lastPageIndex = totalPages;
+
+    if (!shouldShowLeftDots && shouldShowRightDots) {
+      const leftItemCount = 3 + 2 * siblingCount; // Pages: 1, 2, ..., current-1, current, current+1, ...
+      const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
+      return [...leftRange, "...", lastPageIndex];
+    }
+
+    if (shouldShowLeftDots && !shouldShowRightDots) {
+      const rightItemCount = 3 + 2 * siblingCount; // Pages: ..., current-1, current, current+1, ..., total-1, total
+      const rightRange = Array.from({ length: rightItemCount }, (_, i) => totalPages - rightItemCount + i + 1);
+      return [firstPageIndex, "...", ...rightRange];
+    }
+
+    if (shouldShowLeftDots && shouldShowRightDots) {
+      const middleRange = Array.from({ length: rightSiblingIndex - leftSiblingIndex + 1 }, (_, i) => leftSiblingIndex + i);
+      return [firstPageIndex, "...", ...middleRange, "...", lastPageIndex];
+    }
+
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  };
+
+  const paginationRange = getPaginationRange(currentPage, totalPages);
+
+  const handleItemsPerPageChange = (e) => {
+    setSelectedItemsPerPage(Number(e.target.value));
+    setCurrentPage(1); // Reset to first page when items per page changes
+  };
 
   return (
     <>
@@ -516,9 +568,9 @@ const AttendanceList = ({ event, onBack }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {attendances.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((a, i) => (
+                {attendances.map((a, i) => (
                   <tr key={a.id} className="hover:bg-gray-50 transition duration-150">
-                    <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + i + 1}</td>
+                    <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * selectedItemsPerPage + i + 1}</td>
                     <td className="py-4 px-4 text-sm font-medium text-gray-900">{a.nama_lengkap}</td>
                     <td className="py-4 px-4 text-sm text-gray-500">{a.unit_kerja}</td>
                     <td className="py-4 px-4 text-sm text-gray-500">{a.email}</td>
@@ -582,80 +634,71 @@ const AttendanceList = ({ event, onBack }) => {
         )}
 
         {/* Pagination */}
-        {attendances.length > itemsPerPage && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t">
-            <div className="text-sm text-gray-500">
-              Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, attendances.length)} dari {attendances.length} peserta
+        {totalItems > 0 && ( // Ensure pagination only shows if there are items
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-8 py-4 border-t border-gray-200 gap-4">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span>Tampilkan</span>
+              <select
+                value={selectedItemsPerPage}
+                onChange={handleItemsPerPageChange}
+                className="block w-full sm:w-20 rounded-md border-gray-300 shadow-sm text-sm py-1 px-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {[5, 10, 20, 50].map((num) => (
+                  <option key={num} value={num}>
+                    {num}
+                  </option>
+                ))}
+              </select>
+              <span>data per halaman</span>
             </div>
-            <div className="flex gap-2 items-center flex-wrap justify-center">
-              {/* Previous Button */}
+
+            <div className="text-sm text-gray-700">
+              Menampilkan <span className="font-bold text-blue-600">{(currentPage - 1) * selectedItemsPerPage + 1} - {Math.min(currentPage * selectedItemsPerPage, totalItems)}</span> dari{" "}
+              <span className="font-bold text-blue-600">{totalItems}</span> peserta
+            </div>
+
+            <nav className="relative z-0 inline-flex rounded-md -space-x-px" aria-label="Pagination">
               <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Sebelumnya"
+                className="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-blue-50 hover:text-white focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                <span className="sr-only">Sebelumnya</span>
+                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </button>
-              
-              {/* Smart Pagination with ellipsis */}
-              {(() => {
-                const totalPages = Math.ceil(attendances.length / itemsPerPage);
-                const pageNumbers = [];
-                const maxVisible = 7; // Show max 7 page numbers
-                
-                if (totalPages <= maxVisible) {
-                  // Show all pages if total is small
-                  for (let i = 1; i <= totalPages; i++) {
-                    pageNumbers.push(i);
-                  }
-                } else {
-                  // Smart pagination with ellipsis
-                  if (currentPage <= 4) {
-                    // Near start: 1 2 3 4 5 ... last
-                    pageNumbers.push(1, 2, 3, 4, 5, '...', totalPages);
-                  } else if (currentPage >= totalPages - 3) {
-                    // Near end: 1 ... N-4 N-3 N-2 N-1 N
-                    pageNumbers.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-                  } else {
-                    // Middle: 1 ... current-1 current current+1 ... last
-                    pageNumbers.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
-                  }
-                }
-                
-                return pageNumbers.map((page, index) => (
-                  page === '...' ? (
-                    <span key={`ellipsis-${index}`} className="px-3 py-1 text-gray-500">...</span>
-                  ) : (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 text-sm font-medium rounded-md ${
-                        currentPage === page 
-                          ? 'bg-blue-600 text-white' 
-                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  )
-                ));
-              })()}
-              
-              {/* Next Button */}
+              {paginationRange.map((page, index) =>
+                page === "..." ? (
+                  <span key={index} className="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentPage(page)}
+                    aria-current={currentPage === page ? "page" : undefined}
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors duration-150 ease-in-out shadow-sm focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      currentPage === page
+                        ? "z-10 bg-blue-600 border-blue-600 text-white font-semibold shadow-md"
+                        : "bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-white"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
               <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(attendances.length / itemsPerPage)))}
-                disabled={currentPage === Math.ceil(attendances.length / itemsPerPage)}
-                className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Selanjutnya"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-blue-50 hover:text-white focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <span className="sr-only">Berikutnya</span>
+                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
               </button>
-            </div>
+            </nav>
           </div>
         )}
       </div>
