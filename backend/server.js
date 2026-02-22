@@ -127,6 +127,30 @@ app.get("/api/version", (req, res) => {
   res.json({ version: "v4", deployedAt: new Date().toISOString() });
 });
 
+// ONE-TIME admin password reset - removes itself after use
+// Visit: /api/reset-admin?secret=RESET_SECRET_2026
+app.get("/api/reset-admin", async (req, res) => {
+  if (req.query.secret !== "RESET_SECRET_2026") {
+    return res.status(403).json({ error: "Invalid secret" });
+  }
+  try {
+    const bcrypt = (await import('bcryptjs')).default;
+    const pool = (await import('./config/database.js')).default;
+    const newHash = await bcrypt.hash('admin123', 10);
+    const [result] = await pool.query(
+      'UPDATE admin SET password = ? WHERE username = ?',
+      [newHash, 'admin']
+    );
+    res.json({
+      success: true,
+      message: "Admin password reset to 'admin123'",
+      rowsUpdated: result.affectedRows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Direct login test - bypasses frontend, tests exact login flow
 app.get("/api/login-test", async (req, res) => {
   const results = { steps: [] };
