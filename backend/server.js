@@ -124,7 +124,94 @@ app.get("/api/health", async (req, res) => {
 
 // Version marker - proves which code is deployed
 app.get("/api/version", (req, res) => {
-  res.json({ version: "v5", deployedAt: new Date().toISOString() });
+  res.json({ version: "v6", deployedAt: new Date().toISOString() });
+});
+
+// Test event INSERT — diagnoses exact SQL errors when creating kegiatan
+app.get("/api/test-event-insert", async (req, res) => {
+  const results = { steps: [] };
+  try {
+    const pool = (await import('./config/database.js')).default;
+    results.steps.push("pool_imported");
+
+    // Check kegiatan table columns first
+    const [cols] = await pool.query("SHOW COLUMNS FROM kegiatan");
+    results.kegiatanColumns = cols.map(c => c.Field);
+    results.steps.push("columns_checked");
+
+    // Check if admin exists (needed for created_by)
+    const [[admin]] = await pool.query("SELECT id FROM admin LIMIT 1");
+    if (!admin) {
+      return res.json({ ...results, error: "No admin user found for created_by FK" });
+    }
+    results.adminId = admin.id;
+    results.steps.push("admin_found");
+
+    // Try a test INSERT with all 16 columns
+    const testData = {
+      nama_kegiatan: "TEST_EVENT_" + Date.now(),
+      nomor_surat: "TEST_SURAT_" + Date.now(),
+      tanggal_mulai: "2026-01-01",
+      tanggal_selesai: "2026-01-02",
+      jam_mulai: "08:00:00",
+      jam_selesai: "17:00:00",
+      mulai_waktu_absensi: null,
+      batas_waktu_absensi: "2026-01-02 17:00:00",
+      template_sertifikat: null,
+      certificate_layout: null,
+      template_id: null,
+      template_source: "upload",
+      form_config: "{}",
+      official_id: null,
+      created_by: admin.id,
+    };
+    results.testData = testData;
+
+    const [insertResult] = await pool.query(
+      `INSERT INTO kegiatan 
+       (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
+        mulai_waktu_absensi, batas_waktu_absensi, template_sertifikat, certificate_layout, template_id, template_source, form_config, official_id, created_by, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+      [
+        testData.nama_kegiatan,
+        testData.nomor_surat,
+        testData.tanggal_mulai,
+        testData.tanggal_selesai,
+        testData.jam_mulai,
+        testData.jam_selesai,
+        testData.mulai_waktu_absensi,
+        testData.batas_waktu_absensi,
+        testData.template_sertifikat,
+        testData.certificate_layout,
+        testData.template_id,
+        testData.template_source,
+        testData.form_config,
+        testData.official_id,
+        testData.created_by,
+      ]
+    );
+    results.steps.push("insert_success");
+    results.insertedId = insertResult.insertId;
+
+    // Clean up test data
+    await pool.query("DELETE FROM kegiatan WHERE id = ?", [insertResult.insertId]);
+    results.steps.push("cleanup_done");
+
+    res.json({ success: true, ...results, verdict: "INSERT_WORKS" });
+  } catch (err) {
+    res.json({
+      success: false,
+      ...results,
+      error: {
+        code: err.code,
+        errno: err.errno,
+        sqlState: err.sqlState,
+        sqlMessage: err.sqlMessage,
+        message: err.message,
+      },
+      verdict: "INSERT_FAILED"
+    });
+  }
 });
 
 // ONE-TIME admin password reset - removes itself after use
