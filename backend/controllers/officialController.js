@@ -110,6 +110,7 @@ export const createOfficial = async (req, res) => {
       const processResult = await processSignatureImage(uploadedPath);
       
       if (processResult.success) {
+        // Store with leading slash for correct browser src usage
         signature_image_path = `/uploads/pejabat/signatures/${processResult.filename}`;
         console.log(`Signature processed: QR=${processResult.isQRCode}, Background Removed=${processResult.backgroundRemoved}`);
       } else {
@@ -164,7 +165,9 @@ export const updateOfficial = async (req, res) => {
     if (req.file) {
       // Delete old signature image if it exists
       if (existing[0].signature_image_path) {
-        const oldImagePath = path.join(__dirname, "..", existing[0].signature_image_path);
+        // Strip leading slash before joining — on Linux path.join('/base', '/abs') = '/abs' (wrong)
+        const relPath = existing[0].signature_image_path.replace(/^\//, '');
+        const oldImagePath = path.join(__dirname, "..", relPath);
         if (fs.existsSync(oldImagePath)) {
           fs.unlinkSync(oldImagePath);
         }
@@ -175,6 +178,7 @@ export const updateOfficial = async (req, res) => {
       const processResult = await processSignatureImage(uploadedPath);
       
       if (processResult.success) {
+        // Store with leading slash for correct browser src usage
         signature_image_path = `/uploads/pejabat/signatures/${processResult.filename}`;
         console.log(`Signature updated: QR=${processResult.isQRCode}, Background Removed=${processResult.backgroundRemoved}`);
       } else {
@@ -225,7 +229,9 @@ export const deleteOfficial = async (req, res) => {
 
     // Delete signature image file
     if (existing[0].signature_image_path) {
-      const imagePath = path.join(__dirname, "..", existing[0].signature_image_path);
+      // Strip leading slash before joining — on Linux path.join('/base', '/abs') = '/abs' (wrong)
+      const relPath = existing[0].signature_image_path.replace(/^\//, '');
+      const imagePath = path.join(__dirname, "..", relPath);
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
       }

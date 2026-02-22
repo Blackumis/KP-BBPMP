@@ -124,7 +124,7 @@ app.get("/api/health", async (req, res) => {
 
 // Version marker - proves which code is deployed
 app.get("/api/version", (req, res) => {
-  res.json({ version: "v4", deployedAt: new Date().toISOString() });
+  res.json({ version: "v5", deployedAt: new Date().toISOString() });
 });
 
 // ONE-TIME admin password reset - removes itself after use
@@ -290,6 +290,41 @@ app.get("/api/diagnose", async (req, res) => {
   }
 
   res.json(results);
+});
+
+// DB table inspection — checks template_sertif, pejabat, kegiatan column structure
+app.get("/api/db-tables", async (req, res) => {
+  try {
+    const pool = (await import('./config/database.js')).default;
+    const results = {};
+
+    const tablesToCheck = ['admin', 'pejabat', 'template_sertif', 'kegiatan', 'presensi', 'kabupaten_kota', 'kop_surat'];
+
+    for (const table of tablesToCheck) {
+      try {
+        const [cols] = await pool.query(`SHOW COLUMNS FROM \`${table}\``);
+        results[table] = { exists: true, columns: cols.map(c => c.Field) };
+      } catch (e) {
+        results[table] = { exists: false, error: e.message };
+      }
+    }
+
+    // Count rows in key tables
+    for (const table of ['pejabat', 'template_sertif', 'kegiatan', 'admin']) {
+      if (results[table]?.exists) {
+        try {
+          const [[row]] = await pool.query(`SELECT COUNT(*) as cnt FROM \`${table}\``);
+          results[table].rowCount = row.cnt;
+        } catch (e) {
+          results[table].rowCountError = e.message;
+        }
+      }
+    }
+
+    res.json({ success: true, tables: results });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // === FRONTEND STATIC ===
