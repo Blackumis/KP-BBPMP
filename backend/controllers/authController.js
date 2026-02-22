@@ -80,7 +80,8 @@ export const login = async (req, res) => {
     };
 
     // Build a detailed message that includes the actual error
-    let message = `Server error during login [${error.code || 'NO_CODE'}]: ${error.message || 'unknown error'}`;
+    // v3: always expose full error
+    let message = `[v3] Login error [${error.code || 'NO_CODE'}]: ${error.message || 'unknown error'}`;
 
     // JWT errors
     if (error.message && error.message.includes('secretOrPrivateKey')) {

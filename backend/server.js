@@ -122,6 +122,43 @@ app.get("/api/health", async (req, res) => {
   });
 });
 
+// Version marker - proves which code is deployed
+app.get("/api/version", (req, res) => {
+  res.json({ version: "v4", deployedAt: new Date().toISOString() });
+});
+
+// Direct login test - bypasses frontend, tests exact login flow
+app.get("/api/login-test", async (req, res) => {
+  const results = { steps: [] };
+  try {
+    results.steps.push("1_import_pool");
+    const pool = (await import('./config/database.js')).default;
+
+    results.steps.push("2_query_admin");
+    const [admins] = await pool.query('SELECT id, username, LENGTH(password) as pl FROM admin WHERE username = ?', ['admin']);
+    results.adminFound = admins.length > 0;
+    if (admins.length === 0) return res.json({ ...results, error: "admin not found" });
+
+    results.passwordHashLength = admins[0].pl;
+    results.steps.push("3_bcrypt_compare");
+
+    const bcrypt = (await import('bcryptjs')).default;
+    const match = await bcrypt.compare('admin123', admins[0].password || '');
+    results.passwordMatch_admin123 = match;
+    results.steps.push("4_jwt_sign");
+
+    const jwt = (await import('jsonwebtoken')).default;
+    const token = jwt.sign({ id: 1, isAdmin: true }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+    results.jwtOk = true;
+    results.tokenLength = token.length;
+    results.steps.push("5_complete");
+
+    res.json({ ...results, verdict: match ? "LOGIN_SHOULD_WORK" : "WRONG_PASSWORD_HASH" });
+  } catch (err) {
+    res.json({ ...results, error: { code: err.code, message: err.message, stack: err.stack?.split('\n').slice(0, 4) } });
+  }
+});
+
 // Diagnostic endpoint - check DB, tables, admin user, JWT config
 app.get("/api/diagnose", async (req, res) => {
   const results = {
@@ -274,6 +311,9 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({
     success: false,
     message: err.message || "Internal Server Error",
+    errorCode: err.code || null,
+    errorSource: "global_handler",
+    stack: err.stack?.split('\n').slice(0, 6),
   });
 });
 
