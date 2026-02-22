@@ -122,6 +122,72 @@ app.get("/api/health", async (req, res) => {
   });
 });
 
+// Diagnostic endpoint - check DB, tables, admin user, JWT config
+app.get("/api/diagnose", async (req, res) => {
+  const results = {
+    timestamp: new Date().toISOString(),
+    env: {
+      NODE_ENV: process.env.NODE_ENV || "(not set)",
+      PORT: process.env.PORT || "(not set)",
+      HAS_MYSQL_URL: !!process.env.MYSQL_URL,
+      HAS_DB_HOST: !!process.env.DB_HOST,
+      HAS_JWT_SECRET: !!process.env.JWT_SECRET,
+      JWT_SECRET_LENGTH: process.env.JWT_SECRET ? process.env.JWT_SECRET.length : 0,
+      HAS_JWT_EXPIRES_IN: !!process.env.JWT_EXPIRES_IN,
+    },
+    database: { connected: false },
+    tables: {},
+    adminUser: { exists: false },
+  };
+
+  try {
+    const pool = (await import('./config/database.js')).default;
+
+    // Test connection
+    const conn = await pool.getConnection();
+    await conn.ping();
+    results.database.connected = true;
+
+    // Check which database we're connected to
+    const [dbResult] = await conn.query('SELECT DATABASE() as db');
+    results.database.name = dbResult[0].db;
+
+    // Check tables exist
+    const [tables] = await conn.query('SHOW TABLES');
+    results.tables.list = tables.map(t => Object.values(t)[0]);
+
+    // Check admin table
+    if (results.tables.list.includes('admin')) {
+      const [admins] = await conn.query('SELECT id, username, email, LENGTH(password) as pwd_length FROM admin');
+      results.adminUser.exists = admins.length > 0;
+      results.adminUser.count = admins.length;
+      results.adminUser.rows = admins.map(a => ({
+        id: a.id,
+        username: a.username,
+        email: a.email,
+        passwordHashLength: a.pwd_length,
+      }));
+    } else {
+      results.adminUser.error = "admin table does not exist!";
+    }
+
+    // Test JWT signing
+    try {
+      const jwt = (await import('jsonwebtoken')).default;
+      const testToken = jwt.sign({ test: true }, process.env.JWT_SECRET, { expiresIn: '1m' });
+      results.jwt = { canSign: true, tokenLength: testToken.length };
+    } catch (jwtErr) {
+      results.jwt = { canSign: false, error: jwtErr.message };
+    }
+
+    conn.release();
+  } catch (error) {
+    results.database.error = { code: error.code, message: error.message };
+  }
+
+  res.json(results);
+});
+
 // === FRONTEND STATIC ===
 // Serve static assets with long cache (CSS/JS files are fingerprinted by Vite)
 app.use(express.static(path.join(__dirname, "public"), {

@@ -72,16 +72,13 @@ export const login = async (req, res) => {
     // Return specific error info so the issue can be diagnosed
     let message = 'Server error during login';
     let errorType = 'server';
-    let debugInfo = null;
 
-    // Include debug info in development or for diagnosis
-    if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_ERRORS === 'true') {
-      debugInfo = {
-        code: error.code,
-        message: error.message,
-        stack: error.stack?.split('\n').slice(0, 5)
-      };
-    }
+    // Always include debug info for diagnosis (remove after fixing)
+    const debugInfo = {
+      code: error.code,
+      message: error.message,
+      stack: error.stack?.split('\n').slice(0, 5)
+    };
 
     // JWT errors
     if (error.message && error.message.includes('secretOrPrivateKey')) {
