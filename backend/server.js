@@ -124,10 +124,56 @@ app.get("/api/health", async (req, res) => {
 
 // Version marker - proves which code is deployed
 app.get("/api/version", (req, res) => {
-  res.json({ version: "v6", deployedAt: new Date().toISOString() });
+  res.json({ version: "v7", deployedAt: new Date().toISOString() });
+});
+
+// Database migration - adds missing columns to existing tables
+// Visit: /api/migrate?secret=MIGRATE_SECRET_2026
+app.get("/api/migrate", async (req, res) => {
+  if (req.query.secret !== "MIGRATE_SECRET_2026") {
+    return res.status(403).json({ error: "Invalid secret" });
+  }
+
+  const results = { migrations: [], errors: [] };
+
+  try {
+    const pool = (await import('./config/database.js')).default;
+
+    // Define expected columns for each table
+    const migrations = [
+      {
+        table: "kegiatan",
+        column: "mulai_waktu_absensi",
+        definition: "DATETIME NULL COMMENT 'Start time for attendance' AFTER jam_selesai",
+      },
+      // Add more migrations here as needed
+    ];
+
+    for (const m of migrations) {
+      try {
+        // Check if column exists
+        const [cols] = await pool.query(`SHOW COLUMNS FROM \`${m.table}\` LIKE ?`, [m.column]);
+        
+        if (cols.length === 0) {
+          // Column doesn't exist - add it
+          await pool.query(`ALTER TABLE \`${m.table}\` ADD COLUMN \`${m.column}\` ${m.definition}`);
+          results.migrations.push({ table: m.table, column: m.column, status: "ADDED" });
+        } else {
+          results.migrations.push({ table: m.table, column: m.column, status: "EXISTS" });
+        }
+      } catch (err) {
+        results.errors.push({ table: m.table, column: m.column, error: err.message });
+      }
+    }
+
+    res.json({ success: results.errors.length === 0, ...results });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, ...results });
+  }
 });
 
 // Test event INSERT — diagnoses exact SQL errors when creating kegiatan
+// Now uses dynamic column detection (same as the real controller)
 app.get("/api/test-event-insert", async (req, res) => {
   const results = { steps: [] };
   try {
@@ -136,8 +182,13 @@ app.get("/api/test-event-insert", async (req, res) => {
 
     // Check kegiatan table columns first
     const [cols] = await pool.query("SHOW COLUMNS FROM kegiatan");
-    results.kegiatanColumns = cols.map(c => c.Field);
+    const columnNames = cols.map(c => c.Field);
+    results.kegiatanColumns = columnNames;
     results.steps.push("columns_checked");
+    
+    // Check which optional columns exist
+    const hasMulaiWaktuAbsensi = columnNames.includes("mulai_waktu_absensi");
+    results.hasMulaiWaktuAbsensi = hasMulaiWaktuAbsensi;
 
     // Check if admin exists (needed for created_by)
     const [[admin]] = await pool.query("SELECT id FROM admin LIMIT 1");
@@ -147,49 +198,40 @@ app.get("/api/test-event-insert", async (req, res) => {
     results.adminId = admin.id;
     results.steps.push("admin_found");
 
-    // Try a test INSERT with all 16 columns
-    const testData = {
-      nama_kegiatan: "TEST_EVENT_" + Date.now(),
-      nomor_surat: "TEST_SURAT_" + Date.now(),
-      tanggal_mulai: "2026-01-01",
-      tanggal_selesai: "2026-01-02",
-      jam_mulai: "08:00:00",
-      jam_selesai: "17:00:00",
-      mulai_waktu_absensi: null,
-      batas_waktu_absensi: "2026-01-02 17:00:00",
-      template_sertifikat: null,
-      certificate_layout: null,
-      template_id: null,
-      template_source: "upload",
-      form_config: "{}",
-      official_id: null,
-      created_by: admin.id,
-    };
-    results.testData = testData;
+    // Build INSERT dynamically based on available columns
+    const columns = [
+      "nama_kegiatan", "nomor_surat", "tanggal_mulai", "tanggal_selesai",
+      "jam_mulai", "jam_selesai"
+    ];
+    const values = [
+      "TEST_EVENT_" + Date.now(),
+      "TEST_SURAT_" + Date.now(),
+      "2026-01-01",
+      "2026-01-02",
+      "08:00:00",
+      "17:00:00"
+    ];
 
-    const [insertResult] = await pool.query(
-      `INSERT INTO kegiatan 
-       (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
-        mulai_waktu_absensi, batas_waktu_absensi, template_sertifikat, certificate_layout, template_id, template_source, form_config, official_id, created_by, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
-      [
-        testData.nama_kegiatan,
-        testData.nomor_surat,
-        testData.tanggal_mulai,
-        testData.tanggal_selesai,
-        testData.jam_mulai,
-        testData.jam_selesai,
-        testData.mulai_waktu_absensi,
-        testData.batas_waktu_absensi,
-        testData.template_sertifikat,
-        testData.certificate_layout,
-        testData.template_id,
-        testData.template_source,
-        testData.form_config,
-        testData.official_id,
-        testData.created_by,
-      ]
+    // Optional column: mulai_waktu_absensi
+    if (hasMulaiWaktuAbsensi) {
+      columns.push("mulai_waktu_absensi");
+      values.push(null);
+    }
+
+    // Required columns
+    columns.push(
+      "batas_waktu_absensi", "template_sertifikat", "certificate_layout",
+      "template_id", "template_source", "form_config", "official_id", "created_by", "status"
     );
+    values.push(
+      "2026-01-02 17:00:00", null, null, null, "upload", "{}", null, admin.id, "draft"
+    );
+
+    const placeholders = columns.map(() => "?").join(", ");
+    const sql = `INSERT INTO kegiatan (${columns.join(", ")}) VALUES (${placeholders})`;
+    results.generatedSQL = sql;
+
+    const [insertResult] = await pool.query(sql, values);
     results.steps.push("insert_success");
     results.insertedId = insertResult.insertId;
 

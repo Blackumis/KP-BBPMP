@@ -6,6 +6,28 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Cache for kegiatan table columns (refreshed once per app restart)
+let kegiatanColumnsCache = null;
+
+async function getKegiatanColumns() {
+  if (kegiatanColumnsCache) return kegiatanColumnsCache;
+  try {
+    const [cols] = await pool.query("SHOW COLUMNS FROM kegiatan");
+    kegiatanColumnsCache = cols.map(c => c.Field);
+    console.log("[EventController] Cached kegiatan columns:", kegiatanColumnsCache);
+  } catch (err) {
+    console.error("[EventController] Failed to get kegiatan columns:", err.message);
+    kegiatanColumnsCache = []; // Prevent repeated failures
+  }
+  return kegiatanColumnsCache;
+}
+
+// Check if a column exists in kegiatan table
+async function hasColumn(columnName) {
+  const cols = await getKegiatanColumns();
+  return cols.includes(columnName);
+}
+
 export const createEvent = async (req, res) => {
   try {
     const { nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, mulai_waktu_absensi, batas_waktu_absensi, official_id } = req.body;
@@ -92,30 +114,43 @@ export const createEvent = async (req, res) => {
       template_path = templateCheck[0].image_path;
     }
 
-    // Insert event with template_id, template_source, certificate_layout, and official_id
-    const [result] = await pool.query(
-      `INSERT INTO kegiatan 
-       (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
-        mulai_waktu_absensi, batas_waktu_absensi, template_sertifikat, certificate_layout, template_id, template_source, form_config, official_id, created_by, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
-      [
-        nama_kegiatan,
-        nomor_surat,
-        tanggal_mulai,
-        tanggal_selesai,
-        jam_mulai,
-        jam_selesai,
-        mulai_waktu_absensi || null,
-        batas_waktu_absensi,
-        template_path,
-        certificate_layout ? JSON.stringify(certificate_layout) : null,
-        final_template_id,
-        template_source,
-        JSON.stringify(form_config || {}),
-        official_id || null,
-        req.user.id,
-      ],
+    // Build INSERT dynamically based on available columns (handles schema migrations)
+    const hasMulaiWaktuAbsensi = await hasColumn("mulai_waktu_absensi");
+
+    const columns = [
+      "nama_kegiatan", "nomor_surat", "tanggal_mulai", "tanggal_selesai", 
+      "jam_mulai", "jam_selesai"
+    ];
+    const values = [
+      nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
+      jam_mulai, jam_selesai
+    ];
+
+    // Optional column: mulai_waktu_absensi (may not exist in older schemas)
+    if (hasMulaiWaktuAbsensi) {
+      columns.push("mulai_waktu_absensi");
+      values.push(mulai_waktu_absensi || null);
+    }
+
+    // Required columns
+    columns.push("batas_waktu_absensi", "template_sertifikat", "certificate_layout", 
+                 "template_id", "template_source", "form_config", "official_id", "created_by", "status");
+    values.push(
+      batas_waktu_absensi,
+      template_path,
+      certificate_layout ? JSON.stringify(certificate_layout) : null,
+      final_template_id,
+      template_source,
+      JSON.stringify(form_config || {}),
+      official_id || null,
+      req.user.id,
+      "draft"
     );
+
+    const placeholders = columns.map(() => "?").join(", ");
+    const sql = `INSERT INTO kegiatan (${columns.join(", ")}) VALUES (${placeholders})`;
+
+    const [result] = await pool.query(sql, values);
 
     res.status(201).json({
       success: true,
@@ -308,32 +343,45 @@ export const updateEvent = async (req, res) => {
       final_template_source = "template";
     }
 
-    // Update event with proper template tracking, certificate_layout, and official_id
-    await pool.query(
-      `UPDATE kegiatan SET 
-       nama_kegiatan = ?, nomor_surat = ?, tanggal_mulai = ?, tanggal_selesai = ?,
-       jam_mulai = ?, jam_selesai = ?, mulai_waktu_absensi = ?, batas_waktu_absensi = ?, template_sertifikat = ?,
-       certificate_layout = ?, template_id = ?, template_source = ?, form_config = ?, official_id = ?, status = ?
-       WHERE id = ?`,
-      [
-        nama_kegiatan,
-        nomor_surat,
-        tanggal_mulai,
-        tanggal_selesai,
-        jam_mulai,
-        jam_selesai,
-        mulai_waktu_absensi || null,
-        batas_waktu_absensi,
-        template_path,
-        certificate_layout ? JSON.stringify(certificate_layout) : null,
-        final_template_id,
-        final_template_source,
-        JSON.stringify(form_config || {}),
-        official_id || null,
-        status || existing[0].status,
-        id,
-      ],
+    // Build UPDATE dynamically based on available columns (handles schema migrations)
+    const hasMulaiWaktuAbsensi = await hasColumn("mulai_waktu_absensi");
+
+    const setClauses = [
+      "nama_kegiatan = ?", "nomor_surat = ?", "tanggal_mulai = ?", "tanggal_selesai = ?",
+      "jam_mulai = ?", "jam_selesai = ?"
+    ];
+    const values = [
+      nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai,
+      jam_mulai, jam_selesai
+    ];
+
+    // Optional column: mulai_waktu_absensi (may not exist in older schemas)
+    if (hasMulaiWaktuAbsensi) {
+      setClauses.push("mulai_waktu_absensi = ?");
+      values.push(mulai_waktu_absensi || null);
+    }
+
+    // Required columns
+    setClauses.push(
+      "batas_waktu_absensi = ?", "template_sertifikat = ?", "certificate_layout = ?",
+      "template_id = ?", "template_source = ?", "form_config = ?", "official_id = ?", "status = ?"
     );
+    values.push(
+      batas_waktu_absensi,
+      template_path,
+      certificate_layout ? JSON.stringify(certificate_layout) : null,
+      final_template_id,
+      final_template_source,
+      JSON.stringify(form_config || {}),
+      official_id || null,
+      status || existing[0].status
+    );
+
+    // Add WHERE clause value
+    values.push(id);
+
+    const sql = `UPDATE kegiatan SET ${setClauses.join(", ")} WHERE id = ?`;
+    await pool.query(sql, values);
 
     res.json({
       success: true,
