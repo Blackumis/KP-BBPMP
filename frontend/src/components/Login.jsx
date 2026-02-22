@@ -26,39 +26,15 @@ const Login = ({ onLogin }) => {
         onLogin(response.data.admin);
       }
     } catch (err) {
-      // Determine error type and redirect to error page for server errors
       const errorMessage = err.message || "";
-      const isServerError = 
-        errorMessage.toLowerCase().includes("server") ||
-        errorMessage.toLowerCase().includes("network") ||
-        errorMessage.toLowerCase().includes("database") ||
-        errorMessage.toLowerCase().includes("timeout") ||
-        errorMessage.toLowerCase().includes("failed to fetch") ||
-        errorMessage.toLowerCase().includes("connection") ||
-        err.status >= 500;
-
-      if (isServerError) {
-        // Determine specific error type
-        let errorType = "server";
-        if (errorMessage.toLowerCase().includes("database") || errorMessage.toLowerCase().includes("db")) {
-          errorType = "database";
-        } else if (errorMessage.toLowerCase().includes("network") || errorMessage.toLowerCase().includes("failed to fetch") || errorMessage.toLowerCase().includes("connection")) {
-          errorType = "network";
-        } else if (errorMessage.toLowerCase().includes("timeout")) {
-          errorType = "timeout";
-        }
-
+      // Only hard-redirect for true network failures (cannot reach server at all)
+      if (errorMessage.toLowerCase().includes("failed to fetch") || errorMessage === "NetworkError when attempting to fetch resource.") {
         navigate("/error", {
-          state: {
-            errorDetails: {
-              type: errorType,
-              message: errorMessage
-            }
-          }
+          state: { errorDetails: { type: "network", message: errorMessage } }
         });
       } else {
-        // For auth errors, show notification
-        showNotification(err.message || "Login gagal. Periksa username dan password.", "error");
+        // Show actual error message as notification — never hide real errors
+        showNotification(errorMessage || "Login gagal. Periksa username dan password.", "error");
       }
     } finally {
       setIsLoading(false);

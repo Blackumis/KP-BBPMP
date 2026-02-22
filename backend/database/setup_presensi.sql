@@ -179,7 +179,8 @@ INSERT INTO admin (username, email, password, full_name) VALUES
 ('admin', 'admin@kpbbpmp.com', '$2a$10$NY6eRmrH8o31gxv4PlC7Pux.7YLk8QD6nwgT2FRhljDyGqXXalUgu', 'Administrator')
 ON DUPLICATE KEY UPDATE 
   email = VALUES(email), 
-  full_name = VALUES(full_name);
+  full_name = VALUES(full_name),
+  password = VALUES(password);
 
 -- ============================================
 -- Login credentials:

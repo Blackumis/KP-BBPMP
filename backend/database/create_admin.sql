@@ -21,16 +21,17 @@ CREATE TABLE IF NOT EXISTS admin (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert default admin (password: admin123)
--- bcrypt hash of 'admin123' with 10 salt rounds
+-- Valid bcrypt hash of 'admin123' with 10 salt rounds
 INSERT INTO admin (username, email, password, full_name)
 VALUES (
   'admin',
   'admin@kpbbpmp.com',
-  '$2a$10$8KzQJX0G6Y5X5X5X5X5X5eY4x7v2Oq3kFhW9JbZ5y1234567890',
+  '$2a$10$NY6eRmrH8o31gxv4PlC7Pux.7YLk8QD6nwgT2FRhljDyGqXXalUgu',
   'Administrator'
 )
 ON DUPLICATE KEY UPDATE
-  full_name = VALUES(full_name);
+  full_name = VALUES(full_name),
+  password = VALUES(password);
 
 -- ============================================
 -- NOTE: The hashed password above is a placeholder.
