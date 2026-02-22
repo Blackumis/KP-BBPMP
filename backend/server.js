@@ -180,6 +180,49 @@ app.get("/api/diagnose", async (req, res) => {
       results.jwt = { canSign: false, error: jwtErr.message };
     }
 
+    // Simulate full login flow with 'admin123' password
+    try {
+      const bcrypt = (await import('bcryptjs')).default;
+      const jwt = (await import('jsonwebtoken')).default;
+
+      const [admins] = await conn.query(
+        'SELECT * FROM admin WHERE username = ?', ['admin']
+      );
+
+      if (admins.length === 0) {
+        results.loginSimulation = { step: 'query', error: 'admin user not found' };
+      } else {
+        const admin = admins[0];
+        results.loginSimulation = { step: 'bcrypt_compare', adminId: admin.id };
+
+        let pwdMatch = false;
+        try {
+          pwdMatch = await bcrypt.compare('admin123', admin.password);
+          results.loginSimulation.passwordMatch = pwdMatch;
+          results.loginSimulation.step = 'jwt_sign';
+        } catch (bcryptErr) {
+          results.loginSimulation.bcryptError = bcryptErr.message;
+        }
+
+        if (pwdMatch) {
+          try {
+            const token = jwt.sign(
+              { id: admin.id, username: admin.username, isAdmin: true },
+              process.env.JWT_SECRET,
+              { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+            );
+            results.loginSimulation.step = 'complete';
+            results.loginSimulation.jwtGenerated = true;
+            results.loginSimulation.tokenLength = token.length;
+          } catch (jwtSignErr) {
+            results.loginSimulation.jwtError = jwtSignErr.message;
+          }
+        }
+      }
+    } catch (simErr) {
+      results.loginSimulation = { error: simErr.code || simErr.message };
+    }
+
     conn.release();
   } catch (error) {
     results.database.error = { code: error.code, message: error.message };

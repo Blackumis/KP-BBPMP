@@ -70,7 +70,6 @@ export const login = async (req, res) => {
     console.error('Full error:', error);
 
     // Return specific error info so the issue can be diagnosed
-    let message = 'Server error during login';
     let errorType = 'server';
 
     // Always include debug info for diagnosis (remove after fixing)
@@ -79,6 +78,9 @@ export const login = async (req, res) => {
       message: error.message,
       stack: error.stack?.split('\n').slice(0, 5)
     };
+
+    // Build a detailed message that includes the actual error
+    let message = `Server error during login [${error.code || 'NO_CODE'}]: ${error.message || 'unknown error'}`;
 
     // JWT errors
     if (error.message && error.message.includes('secretOrPrivateKey')) {
