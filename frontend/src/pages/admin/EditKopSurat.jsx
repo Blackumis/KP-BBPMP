@@ -246,7 +246,7 @@ const EditKopSurat = () => {
             ) : formData.kop_url ? (
               // Tampilkan gambar yang sudah ada
               <div className="space-y-4">
-                <img src={`http://localhost:5000/${formData.kop_url}`} alt="Current kop" className="max-h-64 mx-auto rounded border border-gray-200" />
+                <img src={`/${formData.kop_url}`} alt="Current kop" className="max-h-64 mx-auto rounded border border-gray-200" />
                 <p className="text-sm text-gray-600">Gambar saat ini</p>
                 <button
                   type="button"

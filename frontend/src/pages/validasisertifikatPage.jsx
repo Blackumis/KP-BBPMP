@@ -19,7 +19,7 @@ const ValidasiSertifikat = () => {
     try {
       setDownloading(true);
       const encodedCertNumber = encodeURIComponent(certificateNumber);
-      const response = await fetch(`http://localhost:5000/api/certificates/download/${encodedCertNumber}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "/api"}/certificates/download/${encodedCertNumber}`);
 
       if (!response.ok) {
         throw new Error("Gagal mengunduh sertifikat");
@@ -53,7 +53,7 @@ const ValidasiSertifikat = () => {
       try {
         setLoading(true);
         const encodedCertNumber = encodeURIComponent(certificateNumber);
-        const response = await fetch(`http://localhost:5000/api/certificates/validate/${encodedCertNumber}`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL || "/api"}/certificates/validate/${encodedCertNumber}`);
         const data = await response.json();
 
         if (data.success && data.valid) {

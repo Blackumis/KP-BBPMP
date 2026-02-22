@@ -19,7 +19,7 @@ const OfficialVerification = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`http://localhost:5000/api/officials/${id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "/api"}/officials/${id}`);
       
       if (!response.ok) {
         throw new Error("Pejabat tidak ditemukan");
@@ -128,7 +128,7 @@ const OfficialVerification = () => {
                 <div className="bg-white rounded-lg p-6 border border-gray-200 flex items-center justify-center min-h-50">
                   {official.signature_image_path ? (
                     <img
-                      src={`http://localhost:5000${official.signature_image_path}`}
+                      src={`${official.signature_image_path}`}
                       alt="Tanda Tangan"
                       className="max-h-48 max-w-full object-contain"
                       onLoad={() => console.log('Image loaded:', official.signature_image_path)}

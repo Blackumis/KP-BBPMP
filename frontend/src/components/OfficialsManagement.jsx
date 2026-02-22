@@ -43,7 +43,7 @@ const OfficialsManagement = () => {
         is_active: official.is_active,
       });
       if (official.signature_image_path) {
-        setPreviewImage(`${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"}${official.signature_image_path}`);
+        setPreviewImage(`${official.signature_image_path}`);
       }
     } else {
       setEditingOfficial(null);
@@ -195,7 +195,7 @@ const OfficialsManagement = () => {
                   <td className="py-4 px-4 text-center">
                     {official.signature_image_path ? (
                       <img
-                        src={`${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"}${official.signature_image_path}`}
+                        src={`${official.signature_image_path}`}
                         alt="Tanda Tangan"
                         className="w-20 h-12 mx-auto object-contain rounded border border-gray-200 bg-white"
                       />

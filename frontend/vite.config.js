@@ -6,6 +6,13 @@ import path from "path";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      "/api": "http://localhost:3000",
+      "/uploads": "http://localhost:3000",
+      "/certificates": "http://localhost:3000",
+    },
+  },
   build: {
     outDir: path.resolve(__dirname, "../backend/public"),
     rollupOptions: {
