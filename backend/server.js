@@ -20,9 +20,9 @@ import officialRoutes from "./routes/officialRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 
 // Simple Queue (no Redis needed!)
-import { certificateQueue, emailQueue } from './config/simpleQueue.js';
+import { certificateQueue, emailQueue } from "./config/simpleQueue.js";
 // Import workers to start processing
-import './workers/certificateWorker.js';
+import "./workers/certificateWorker.js";
 
 dotenv.config();
 
@@ -45,17 +45,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security - skip compression for binary/PDF responses to prevent corruption
-app.use(compression({
-  filter: (req, res) => {
-    // Don't compress PDF or binary file downloads
-    const contentType = res.getHeader('Content-Type');
-    if (contentType && (contentType.includes('application/pdf') || contentType.includes('application/octet-stream'))) {
-      return false;
-    }
-    // Fall back to default filter
-    return compression.filter(req, res);
-  }
-}));
+app.use(
+  compression({
+    filter: (req, res) => {
+      // Don't compress PDF or binary file downloads
+      const contentType = res.getHeader("Content-Type");
+      if (contentType && (contentType.includes("application/pdf") || contentType.includes("application/octet-stream"))) {
+        return false;
+      }
+      // Fall back to default filter
+      return compression.filter(req, res);
+    },
+  }),
+);
 
 // CORS
 app.use(
@@ -91,10 +93,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/certificates", express.static(path.join(__dirname, "certificates")));
 
 // Queue monitoring endpoint
-app.get('/api/queue/stats', (req, res) => {
+app.get("/api/queue/stats", (req, res) => {
   res.json({
     certificate: certificateQueue.getStats(),
-    email: emailQueue.getStats()
+    email: emailQueue.getStats(),
   });
 });
 
@@ -110,35 +112,44 @@ app.use("/api/kop-surat", kopSuratRoutes);
 app.use("/api/settings", settingsRoutes);
 
 // Health check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "OK" });
+
+app.get('/test-db', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection({
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+    });
+
+    const [rows] = await connection.execute('SELECT NOW() as waktu');
+    await connection.end();
+
+    res.json({
+      status: "SUCCESS",
+      message: "Database connected!",
+      server_time: rows[0].waktu
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "ERROR",
+      message: error.message,
+      code: error.code
+    });
+  }
 });
 
 // === FRONTEND STATIC ===
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
+const frontendPath = path.join(__dirname, "../frontend/dist");
 
-// Read index.html template once and reuse (fast and simple)
-const indexPath = path.join(__dirname, "public", "index.html");
-let indexHtmlTemplate = null;
-try {
-  indexHtmlTemplate = fs.readFileSync(indexPath, "utf8");
-} catch (err) {
-  console.error("Could not read index.html template:", err);
-  indexHtmlTemplate = null;
-}
+// Serve static files (JS, CSS, assets)
+app.use(express.static(frontendPath));
 
-function sendIndex(res) {
-  if (!indexHtmlTemplate) {
-    return res.status(500).send("index.html not available");
-  }
-
-  res.set("Content-Type", "text/html; charset=utf-8");
-  res.send(indexHtmlTemplate);
-}
-
-// SPA fallback: serve index.html for any non-API route so the client-side router handles navigation
+// SPA fallback (React/Vite router support)
 app.get("*", (req, res) => {
-  sendIndex(res);
+  res.sendFile(path.join(frontendPath, "index.html"));
 });
 
 // Error handler (API only)

@@ -97,7 +97,7 @@ export const createEvent = async (req, res) => {
       `INSERT INTO kegiatan 
        (nama_kegiatan, nomor_surat, tanggal_mulai, tanggal_selesai, jam_mulai, jam_selesai, 
         mulai_waktu_absensi, batas_waktu_absensi, template_sertifikat, certificate_layout, template_id, template_source, form_config, official_id, created_by, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
       [
         nama_kegiatan,
         nomor_surat,

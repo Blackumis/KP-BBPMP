@@ -46,7 +46,6 @@ Sebelum instalasi, pastikan komputer Anda memiliki:
 
 - **Node.js** versi 18 atau lebih baru ([Download](https://nodejs.org/))
 - **MySQL** versi 8.0 atau lebih baru ([Download](https://dev.mysql.com/downloads/))
-- **Redis** untuk queue system ([Lihat panduan instalasi](#install-redis))
 
 
 Untuk mengecek versi Node.js:
@@ -85,7 +84,7 @@ Buka MySQL dan jalankan perintah berikut:
 
 ```sql
 -- Buat database
-CREATE DATABASE kp_bbpmp_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE bbpmp_presensi CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 Atau import file schema langsung:
@@ -109,22 +108,6 @@ npm run create-admin
 
 Ikuti instruksi untuk membuat username dan password admin.
 
-### 7. Install Redis (untuk Queue System)
-
-**Option 1: Docker (Recommended)**
-```bash
-docker run -d -p 6379:6379 --name redis-bbpmp redis:alpine
-```
-
-**Option 2: Windows/Linux/Mac**  
-Lihat panduan lengkap: [REDIS_INSTALLATION.md](REDIS_INSTALLATION.md)
-
-**Test Redis:**
-```bash
-npm run test-redis
-```
-
----
 
 ## Konfigurasi
 
@@ -141,8 +124,8 @@ NODE_ENV=development
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
-DB_PASSWORD=password_mysql_anda
-DB_NAME=kp_bbpmp_db
+DB_PASSWORD=password_mysql
+DB_NAME=bbpmp_presensi
 
 # JWT Secret (ganti dengan string random yang aman)
 JWT_SECRET=ganti-dengan-secret-key-yang-aman-dan-panjang
@@ -154,11 +137,6 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=email-anda@gmail.com
 SMTP_PASSWORD=xxxx-xxxx-xxxx-xxxx
-
-# Redis Configuration (Queue System)
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
-REDIS_PASSWORD=
 
 # File Upload Configuration
 MAX_FILE_SIZE=5242880
@@ -267,12 +245,6 @@ Sistem queue telah ditambahkan untuk menangani pembuatan dan pengiriman sertifik
    POST http://localhost:5000/api/certificates/send-event/{event_id}
    ```
 
-### Dokumentasi Lengkap
-
-- **[SETUP_QUEUE.md](SETUP_QUEUE.md)** - Setup & testing guide
-- **[QUEUE_GUIDE.md](backend/QUEUE_GUIDE.md)** - Complete documentation
-- **[REDIS_INSTALLATION.md](REDIS_INSTALLATION.md)** - Redis installation guide
-
 ### Performance
 
 | Concurrency | 3000 Certificates | 3000 Emails | Total |
@@ -348,13 +320,6 @@ netstat -ano | findstr :5000
 taskkill /PID <PID> /F
 ```
 
-### Error: Redis Connection (Queue System)
-```
-Error: connect ECONNREFUSED 127.0.0.1:6379
-```
-- Pastikan Redis sudah berjalan
-- Test dengan: `redis-cli ping` (harus return "PONG")
-- Start Redis: `docker start redis-bbpmp`
 
 ### Queue tidak memproses jobs
 - Pastikan worker sudah diimport di `server.js`
