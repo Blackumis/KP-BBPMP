@@ -51,7 +51,8 @@ certificateQueue.process(async (job) => {
         tanggal_mulai: event_data.tanggal_mulai,
         tanggal_selesai: event_data.tanggal_selesai,
         certificate_layout: certificateLayout,
-        official_qr_path: event_data.official_qr_path
+        official_qr_path: event_data.official_qr_path,
+        official_signature_path: event_data.official_signature_path
       },
       event_data.template_sertifikat
     );
@@ -85,16 +86,21 @@ certificateQueue.process(async (job) => {
 
 // Process email sending jobs
 emailQueue.process(async (job) => {
-  const { attendance_id, event_name } = job.data;
+  const { attendance_id } = job.data;
 
   try {
     await job.progress(10);
 
-    // Get attendance data with certificate
+    // Get attendance data + full event/official/template data (fresh from DB)
     const [attendances] = await pool.query(
-      `SELECT a.*, e.nama_kegiatan
+      `SELECT a.*,
+              e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai,
+              e.template_sertifikat, e.nomor_surat, e.certificate_layout,
+              e.official_id, e.official_qr_path,
+              o.signature_image_path as official_signature_path
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
+       LEFT JOIN pejabat o ON e.official_id = o.id
        WHERE a.id = ?`,
       [attendance_id]
     );
@@ -105,11 +111,46 @@ emailQueue.process(async (job) => {
 
     const attendance = attendances[0];
 
-    if (!attendance.certificate_path) {
-      throw new Error('Certificate not generated yet');
+    // Parse certificate_layout if it's a JSON string
+    let certificateLayout = null;
+    try {
+      if (attendance.certificate_layout) {
+        certificateLayout = typeof attendance.certificate_layout === 'string'
+          ? JSON.parse(attendance.certificate_layout)
+          : attendance.certificate_layout;
+      }
+    } catch (err) {
+      console.warn('Failed to parse certificate_layout in email worker:', err);
     }
 
-    await job.progress(30);
+    await job.progress(20);
+
+    // Always regenerate the certificate to ensure it uses the latest template,
+    // layout, and official signature (avoids sending stale PDFs)
+    const result = await generateCertificate(
+      attendance,
+      {
+        nama_kegiatan: attendance.nama_kegiatan,
+        tanggal_mulai: attendance.tanggal_mulai,
+        tanggal_selesai: attendance.tanggal_selesai,
+        certificate_layout: certificateLayout,
+        official_qr_path: attendance.official_qr_path,
+        official_signature_path: attendance.official_signature_path
+      },
+      attendance.template_sertifikat
+    );
+
+    if (!result.success) {
+      throw new Error('Failed to regenerate certificate before sending');
+    }
+
+    // Update the stored certificate path with the freshly generated file
+    await pool.query(
+      'UPDATE presensi SET certificate_path = ? WHERE id = ?',
+      [result.filepath, attendance_id]
+    );
+
+    await job.progress(50);
 
     // Prepare email content
     const subject = `Sertifikat - ${attendance.nama_kegiatan}`;
@@ -124,9 +165,9 @@ emailQueue.process(async (job) => {
       <p>Salam,<br>BBPMP</p>
     `;
 
-    const certificatePath = path.join(__dirname, '..', attendance.certificate_path);
+    const certificatePath = path.join(__dirname, '..', result.filepath);
 
-    await job.progress(50);
+    await job.progress(60);
 
     // Send email
     const emailResult = await sendCertificateEmail(

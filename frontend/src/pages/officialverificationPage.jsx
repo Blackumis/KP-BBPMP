@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { API_BASE_URL, SERVER_BASE_URL } from "../services/api";
 
 const OfficialVerification = () => {
   const { id } = useParams();
@@ -19,7 +20,7 @@ const OfficialVerification = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`http://localhost:5000/api/officials/${id}`);
+      const response = await fetch(`${API_BASE_URL}/officials/${id}`);
       
       if (!response.ok) {
         throw new Error("Pejabat tidak ditemukan");
@@ -128,7 +129,7 @@ const OfficialVerification = () => {
                 <div className="bg-white rounded-lg p-6 border border-gray-200 flex items-center justify-center min-h-50">
                   {official.signature_image_path ? (
                     <img
-                      src={`http://localhost:5000${official.signature_image_path}`}
+                      src={`${SERVER_BASE_URL}${official.signature_image_path}`}
                       alt="Tanda Tangan"
                       className="max-h-48 max-w-full object-contain"
                       onLoad={() => console.log('Image loaded:', official.signature_image_path)}

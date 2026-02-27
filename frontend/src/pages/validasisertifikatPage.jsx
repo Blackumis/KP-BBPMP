@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { API_BASE_URL } from "../services/api";
 
 const ValidasiSertifikat = () => {
   const location = useLocation();
@@ -19,7 +20,7 @@ const ValidasiSertifikat = () => {
     try {
       setDownloading(true);
       const encodedCertNumber = encodeURIComponent(certificateNumber);
-      const response = await fetch(`http://localhost:5000/api/certificates/download/${encodedCertNumber}`);
+      const response = await fetch(`${API_BASE_URL}/certificates/download/${encodedCertNumber}`);
 
       if (!response.ok) {
         throw new Error("Gagal mengunduh sertifikat");
@@ -53,7 +54,7 @@ const ValidasiSertifikat = () => {
       try {
         setLoading(true);
         const encodedCertNumber = encodeURIComponent(certificateNumber);
-        const response = await fetch(`http://localhost:5000/api/certificates/validate/${encodedCertNumber}`);
+        const response = await fetch(`${API_BASE_URL}/certificates/validate/${encodedCertNumber}`);
         const data = await response.json();
 
         if (data.success && data.valid) {

@@ -181,11 +181,16 @@ export const sendCertificate = async (req, res) => {
   try {
     const { attendance_id } = req.params;
 
-    // Get attendance data
+    // Get attendance + full event/official data (fresh)
     const [attendances] = await pool.query(
-      `SELECT a.*, e.nama_kegiatan
+      `SELECT a.*,
+              e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai,
+              e.template_sertifikat, e.nomor_surat, e.certificate_layout,
+              e.official_id, e.official_qr_path,
+              o.signature_image_path as official_signature_path
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
+       LEFT JOIN pejabat o ON e.official_id = o.id
        WHERE a.id = ?`,
       [attendance_id]
     );
@@ -199,13 +204,49 @@ export const sendCertificate = async (req, res) => {
 
     const attendance = attendances[0];
 
-    // Check if certificate exists
-    if (!attendance.certificate_path) {
+    // Require a certificate number to be present
+    if (!attendance.nomor_sertifikat) {
       return res.status(400).json({
         success: false,
         message: 'sertifikat belum dibuat'
       });
     }
+
+    // Parse certificate_layout if it's a JSON string
+    let certificateLayout = null;
+    try {
+      if (attendance.certificate_layout) {
+        certificateLayout = typeof attendance.certificate_layout === 'string'
+          ? JSON.parse(attendance.certificate_layout)
+          : attendance.certificate_layout;
+      }
+    } catch (err) {
+      console.warn('Failed to parse certificate_layout in sendCertificate:', err);
+    }
+
+    // Always regenerate a fresh certificate before sending
+    const genResult = await generateCertificate(
+      attendance,
+      {
+        nama_kegiatan: attendance.nama_kegiatan,
+        tanggal_mulai: attendance.tanggal_mulai,
+        tanggal_selesai: attendance.tanggal_selesai,
+        certificate_layout: certificateLayout,
+        official_qr_path: attendance.official_qr_path,
+        official_signature_path: attendance.official_signature_path
+      },
+      attendance.template_sertifikat
+    );
+
+    if (!genResult.success) {
+      throw new Error('Failed to regenerate certificate before sending');
+    }
+
+    // Update stored path with newly generated file
+    await pool.query(
+      'UPDATE presensi SET certificate_path = ? WHERE id = ?',
+      [genResult.filepath, attendance_id]
+    );
 
     const subject = `Sertifikat - ${attendance.nama_kegiatan}`;
     const html = `
@@ -219,7 +260,7 @@ export const sendCertificate = async (req, res) => {
       <p>Salam,<br>BBPMP</p>
     `;
 
-    const certificatePath = path.join(__dirname, '..', attendance.certificate_path);
+    const certificatePath = path.join(__dirname, '..', genResult.filepath);
 
     // Send email
     const emailResult = await sendCertificateEmail(
@@ -267,12 +308,14 @@ export const sendEventCertificates = async (req, res) => {
   try {
     const { event_id } = req.params;
 
-    // Get all attendances with certificates
+    // Get all attendances that have a certificate number (eligible to receive email).
+    // certificate_path is intentionally NOT required here — the email worker will
+    // regenerate a fresh PDF before sending so recipients always get the latest version.
     const [attendances] = await pool.query(
       `SELECT a.*, e.nama_kegiatan
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
-       WHERE a.event_id = ? AND a.certificate_path IS NOT NULL
+       WHERE a.event_id = ? AND a.nomor_sertifikat IS NOT NULL
        ORDER BY a.urutan_absensi ASC`,
       [event_id]
     );
@@ -280,16 +323,15 @@ export const sendEventCertificates = async (req, res) => {
     if (attendances.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'No certificates found to send'
+        message: 'No eligible attendances found (no certificate numbers assigned)'
       });
     }
 
-    // Add jobs to email queue
+    // Add jobs to email queue. The worker fetches all fresh data itself.
     const jobs = [];
     for (const attendance of attendances) {
       const job = await emailQueue.add({
-        attendance_id: attendance.id,
-        event_name: attendance.nama_kegiatan
+        attendance_id: attendance.id
       });
       jobs.push(job);
     }

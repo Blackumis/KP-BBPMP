@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { eventsAPI, templatesAPI, officialsAPI } from "../services/api";
+import { eventsAPI, templatesAPI, officialsAPI, SERVER_BASE_URL } from "../services/api";
 import CertificateEditor from "./CertificateEditor";
 import { showNotification } from "./Notification";
 
@@ -165,7 +165,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     // Build full URL for template if available
     let templatePreviewUrl = null;
     if (editEvent.template_sertifikat) {
-      const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/api\/?$/i, "");
+      const apiBase = SERVER_BASE_URL;
       templatePreviewUrl = `${apiBase}/${editEvent.template_sertifikat}`;
     }
 
@@ -606,8 +606,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
                         {templates.map((template) => {
-                          const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/api\/?$/i, "");
-                          const imageUrl = `${apiBase}/${template.image_path}`;
+                          const imageUrl = `${SERVER_BASE_URL}/${template.image_path}`;
                           const isSelected = formData.templateId === template.id;
                           return (
                             <div

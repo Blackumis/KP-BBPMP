@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { kopSuratAPI } from "../../services/api";
+import { kopSuratAPI, SERVER_BASE_URL } from "../../services/api";
 import { showNotification } from "../../components/Notification";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import SmtpSettingsModal from "../../components/SmtpSettingsModal";
@@ -154,8 +154,8 @@ const ListKopSurat = () => {
     });
   };
   
-  // Use VITE_BASE_URL with fallback to localhost:5000
-  const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5000";
+  // Use SERVER_BASE_URL from centralized api.js (respects VITE_API_URL env var)
+  const BASE_URL = SERVER_BASE_URL;
 
   if (loading) {
     return (

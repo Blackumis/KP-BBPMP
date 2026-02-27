@@ -1,7 +1,10 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+// Base server URL without /api suffix (for asset/image URLs)
+const SERVER_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+
 // Export for use in components that need direct fetch
-export { API_BASE_URL };
+export { API_BASE_URL, SERVER_BASE_URL };
 
 const getToken = () => localStorage.getItem("token");
 const setToken = (token) => localStorage.setItem("token", token);
