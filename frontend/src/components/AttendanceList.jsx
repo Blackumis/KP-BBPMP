@@ -8,6 +8,7 @@ const AttendanceList = ({ event, onBack }) => {
   const [attendances, setAttendances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
   const itemsPerPage = 10;
 
   // Loading states for individual attendance actions
@@ -58,6 +59,23 @@ const AttendanceList = ({ event, onBack }) => {
   const isButtonLoading = (attendanceId, action) => {
     return loadingStates[`${attendanceId}-${action}`] || false;
   };
+
+  // Filter attendances based on search query
+  const filteredAttendances = attendances.filter((attendance) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      attendance.nama_lengkap?.toLowerCase().includes(query) ||
+      attendance.unit_kerja?.toLowerCase().includes(query) ||
+      attendance.email?.toLowerCase().includes(query) ||
+      attendance.nomor_sertifikat?.toLowerCase().includes(query)
+    );
+  });
+
+  // Reset to first page when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // ===== INDIVIDUAL ATTENDANCE ACTIONS =====
 
@@ -446,13 +464,46 @@ const AttendanceList = ({ event, onBack }) => {
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Cari berdasarkan nama, unit kerja, email, atau nomor sertifikat..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="mt-2 text-sm text-gray-600">
+              Menampilkan {filteredAttendances.length} dari {attendances.length} peserta
+            </p>
+          )}
+        </div>
+
         {/* Event-Level Certificate Actions */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-4">Manajemen Sertifikat Kegiatan</h3>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={handleGenerateAllCertificates}
-              disabled={eventLoading.generateAll || isLoading || attendances.length === 0}
+              disabled={eventLoading.generateAll || isLoading || filteredAttendances.length === 0}
               className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {eventLoading.generateAll && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
@@ -464,7 +515,7 @@ const AttendanceList = ({ event, onBack }) => {
 
             <button
               onClick={handleSendAllCertificates}
-              disabled={eventLoading.sendAll || isLoading || attendances.length === 0}
+              disabled={eventLoading.sendAll || isLoading || filteredAttendances.length === 0}
               className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {eventLoading.sendAll && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
@@ -472,7 +523,7 @@ const AttendanceList = ({ event, onBack }) => {
             </button>
             <button
               onClick={handleGenerateAttendanceReport}
-              disabled={eventLoading.generateReport || isLoading || attendances.length === 0}
+              disabled={eventLoading.generateReport || isLoading || filteredAttendances.length === 0}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {eventLoading.generateReport && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
@@ -489,7 +540,7 @@ const AttendanceList = ({ event, onBack }) => {
         </div>
 
         {/* Attendance Table */}
-        {attendances.length === 0 ? (
+        {filteredAttendances.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -499,7 +550,7 @@ const AttendanceList = ({ event, onBack }) => {
                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
-            <p className="text-gray-500 text-lg">Belum ada peserta yang terdaftar.</p>
+            <p className="text-gray-500 text-lg">{searchQuery ? "Tidak ada peserta yang cocok dengan pencarian." : "Belum ada peserta yang terdaftar."}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -516,7 +567,7 @@ const AttendanceList = ({ event, onBack }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {attendances.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((a, i) => (
+                {filteredAttendances.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((a, i) => (
                   <tr key={a.id} className="hover:bg-gray-50 transition duration-150">
                     <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + i + 1}</td>
                     <td className="py-4 px-4 text-sm font-medium text-gray-900">{a.nama_lengkap}</td>
@@ -582,10 +633,10 @@ const AttendanceList = ({ event, onBack }) => {
         )}
 
         {/* Pagination */}
-        {attendances.length > itemsPerPage && (
+        {filteredAttendances.length > itemsPerPage && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t">
             <div className="text-sm text-gray-500">
-              Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, attendances.length)} dari {attendances.length} peserta
+              Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredAttendances.length)} dari {filteredAttendances.length} peserta
             </div>
             <div className="flex gap-2 items-center flex-wrap justify-center">
               {/* Previous Button */}
@@ -602,7 +653,7 @@ const AttendanceList = ({ event, onBack }) => {
               
               {/* Smart Pagination with ellipsis */}
               {(() => {
-                const totalPages = Math.ceil(attendances.length / itemsPerPage);
+                const totalPages = Math.ceil(filteredAttendances.length / itemsPerPage);
                 const pageNumbers = [];
                 const maxVisible = 7; // Show max 7 page numbers
                 
@@ -646,8 +697,8 @@ const AttendanceList = ({ event, onBack }) => {
               
               {/* Next Button */}
               <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(attendances.length / itemsPerPage)))}
-                disabled={currentPage === Math.ceil(attendances.length / itemsPerPage)}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredAttendances.length / itemsPerPage)))}
+                disabled={currentPage === Math.ceil(filteredAttendances.length / itemsPerPage)}
                 className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Selanjutnya"
               >
