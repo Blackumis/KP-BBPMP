@@ -462,8 +462,11 @@ const AttendanceForm = ({ eventId }) => {
       </div>
     );
   }
+  const startTime = config?.mulai_waktu_absensi ? new Date(config.mulai_waktu_absensi) : null;
 
-  if (config && !hasStarted) {
+  const now = new Date();
+  const isBeforeStart = startTime && now < startTime;
+  if (config && isBeforeStart) {
     const startTime = config.mulai_waktu_absensi ? new Date(config.mulai_waktu_absensi) : null;
     const serverMsg = formError || config.start_message || config.message || `Absensi untuk kegiatan ${config.nama_kegiatan} belum dimulai. Silakan kembali lagi ketika absensi dibuka.`;
 
