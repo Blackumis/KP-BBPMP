@@ -66,10 +66,36 @@ export const login = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error:', error.code, error.message);
+
+    // Return specific error info so the issue can be diagnosed
+    let message = 'Server error during login';
+    let errorType = 'server';
+
+    if (error.code === 'ECONNREFUSED') {
+      message = 'Database connection refused. MySQL may not be running.';
+      errorType = 'database';
+    } else if (error.code === 'ER_ACCESS_DENIED_ERROR') {
+      message = 'Database access denied. Check database credentials.';
+      errorType = 'database';
+    } else if (error.code === 'ER_BAD_DB_ERROR') {
+      message = 'Database not found. Please run the setup SQL script.';
+      errorType = 'database';
+    } else if (error.code === 'ER_NO_SUCH_TABLE') {
+      message = 'Admin table not found. Please run the setup SQL script.';
+      errorType = 'database';
+    } else if (error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ENOTFOUND') {
+      message = 'Database connection lost. Please try again.';
+      errorType = 'database';
+    } else if (error.code === 'ETIMEDOUT') {
+      message = 'Database connection timed out.';
+      errorType = 'timeout';
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Server error during login'
+      message,
+      errorType
     });
   }
 };

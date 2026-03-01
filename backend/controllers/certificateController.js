@@ -1,10 +1,10 @@
-import pool from '../config/database.js';
-import { generateCertificate } from '../utils/pdfGenerator.js';
-import { sendCertificateEmail } from '../utils/emailService.js';
-import { certificateQueue, emailQueue } from '../config/simpleQueue.js';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import pool from "../config/database.js";
+import { generateCertificate } from "../utils/pdfGenerator.js";
+import { sendCertificateEmail } from "../utils/emailService.js";
+import { certificateQueue, emailQueue } from "../config/simpleQueue.js";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,13 +23,13 @@ export const generateSingleCertificate = async (req, res) => {
        JOIN kegiatan e ON a.event_id = e.id
        LEFT JOIN pejabat o ON e.official_id = o.id
        WHERE a.id = ?`,
-      [attendance_id]
+      [attendance_id],
     );
 
     if (attendances.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Attendance not found'
+        message: "Attendance not found",
       });
     }
 
@@ -39,12 +39,10 @@ export const generateSingleCertificate = async (req, res) => {
     let certificateLayout = null;
     try {
       if (attendance.certificate_layout) {
-        certificateLayout = typeof attendance.certificate_layout === 'string' 
-          ? JSON.parse(attendance.certificate_layout) 
-          : attendance.certificate_layout;
+        certificateLayout = typeof attendance.certificate_layout === "string" ? JSON.parse(attendance.certificate_layout) : attendance.certificate_layout;
       }
     } catch (err) {
-      console.warn('Failed to parse certificate_layout:', err);
+      console.warn("Failed to parse certificate_layout:", err);
     }
 
     // Generate PDF certificate
@@ -55,35 +53,31 @@ export const generateSingleCertificate = async (req, res) => {
         tanggal_mulai: attendance.tanggal_mulai,
         tanggal_selesai: attendance.tanggal_selesai,
         certificate_layout: certificateLayout,
-        official_signature_path: attendance.official_signature_path
+        official_signature_path: attendance.official_signature_path,
       },
-      attendance.template_sertifikat
+      attendance.template_sertifikat,
     );
 
     if (!result.success) {
-      throw new Error('Failed to generate certificate');
+      throw new Error("Failed to generate certificate");
     }
 
     // Update attendance record
-    await pool.query(
-      'UPDATE presensi SET certificate_path = ?, status = ? WHERE id = ?',
-      [result.filepath, 'menunggu_sertifikat', attendance_id]
-    );
+    await pool.query("UPDATE presensi SET certificate_path = ?, status = ? WHERE id = ?", [result.filepath, "menunggu_sertifikat", attendance_id]);
 
     res.json({
       success: true,
-      message: 'Certificate generated successfully',
+      message: "Certificate generated successfully",
       data: {
         certificate_path: result.filepath,
-        download_url: `${process.env.BASE_URL}/${result.filepath}`
-      }
+        download_url: `${process.env.BASE_URL}/${result.filepath}`,
+      },
     });
-
   } catch (error) {
-    console.error('Generate certificate error:', error);
+    console.error("Generate certificate error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to generate certificate'
+      message: "Failed to generate certificate",
     });
   }
 };
@@ -99,13 +93,13 @@ export const generateEventCertificates = async (req, res) => {
        FROM kegiatan e
        LEFT JOIN pejabat o ON e.official_id = o.id
        WHERE e.id = ?`,
-      [event_id]
+      [event_id],
     );
 
     if (events.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Event not found'
+        message: "Event not found",
       });
     }
 
@@ -115,24 +109,19 @@ export const generateEventCertificates = async (req, res) => {
     let certificateLayout = null;
     try {
       if (event.certificate_layout) {
-        certificateLayout = typeof event.certificate_layout === 'string' 
-          ? JSON.parse(event.certificate_layout) 
-          : event.certificate_layout;
+        certificateLayout = typeof event.certificate_layout === "string" ? JSON.parse(event.certificate_layout) : event.certificate_layout;
       }
     } catch (err) {
-      console.warn('Failed to parse certificate_layout:', err);
+      console.warn("Failed to parse certificate_layout:", err);
     }
 
     // Get all attendances for the event
-    const [attendances] = await pool.query(
-      'SELECT * FROM presensi WHERE event_id = ? ORDER BY urutan_absensi ASC',
-      [event_id]
-    );
+    const [attendances] = await pool.query("SELECT * FROM presensi WHERE event_id = ? ORDER BY urutan_absensi ASC", [event_id]);
 
     if (attendances.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'No attendances found for this event'
+        message: "No attendances found for this event",
       });
     }
 
@@ -148,8 +137,8 @@ export const generateEventCertificates = async (req, res) => {
           certificate_layout: certificateLayout,
           official_qr_path: event.official_qr_path,
           official_signature_path: event.official_signature_path,
-          template_sertifikat: event.template_sertifikat
-        }
+          template_sertifikat: event.template_sertifikat,
+        },
       });
       jobs.push(job);
     }
@@ -161,17 +150,16 @@ export const generateEventCertificates = async (req, res) => {
         total: attendances.length,
         queued: jobs.length,
         queue_info: {
-          name: 'certificate-generation',
-          message: 'Jobs are being processed in the background. Check queue status for progress.'
-        }
-      }
+          name: "certificate-generation",
+          message: "Jobs are being processed in the background. Check queue status for progress.",
+        },
+      },
     });
-
   } catch (error) {
-    console.error('Generate event certificates error:', error);
+    console.error("Generate event certificates error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to queue certificate generation jobs'
+      message: "Failed to queue certificate generation jobs",
     });
   }
 };
@@ -181,31 +169,67 @@ export const sendCertificate = async (req, res) => {
   try {
     const { attendance_id } = req.params;
 
-    // Get attendance data
+    // Get attendance + full event/official data (fresh)
     const [attendances] = await pool.query(
-      `SELECT a.*, e.nama_kegiatan
+      `SELECT a.*,
+              e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai,
+              e.template_sertifikat, e.nomor_surat, e.certificate_layout,
+              e.official_id, e.official_qr_path,
+              o.signature_image_path as official_signature_path
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
+       LEFT JOIN pejabat o ON e.official_id = o.id
        WHERE a.id = ?`,
-      [attendance_id]
+      [attendance_id],
     );
 
     if (attendances.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Attendance not found'
+        message: "Attendance not found",
       });
     }
 
     const attendance = attendances[0];
 
-    // Check if certificate exists
-    if (!attendance.certificate_path) {
+    // Require a certificate number to be present
+    if (!attendance.nomor_sertifikat) {
       return res.status(400).json({
         success: false,
-        message: 'sertifikat belum dibuat'
+        message: "sertifikat belum dibuat",
       });
     }
+
+    // Parse certificate_layout if it's a JSON string
+    let certificateLayout = null;
+    try {
+      if (attendance.certificate_layout) {
+        certificateLayout = typeof attendance.certificate_layout === "string" ? JSON.parse(attendance.certificate_layout) : attendance.certificate_layout;
+      }
+    } catch (err) {
+      console.warn("Failed to parse certificate_layout in sendCertificate:", err);
+    }
+
+    // Always regenerate a fresh certificate before sending
+    const genResult = await generateCertificate(
+      attendance,
+      {
+        nama_kegiatan: attendance.nama_kegiatan,
+        tanggal_mulai: attendance.tanggal_mulai,
+        tanggal_selesai: attendance.tanggal_selesai,
+        certificate_layout: certificateLayout,
+        official_qr_path: attendance.official_qr_path,
+        official_signature_path: attendance.official_signature_path,
+      },
+      attendance.template_sertifikat,
+    );
+
+    if (!genResult.success) {
+      throw new Error("Failed to regenerate certificate before sending");
+    }
+
+    // Update stored path with newly generated file
+    await pool.query("UPDATE presensi SET certificate_path = ? WHERE id = ?", [genResult.filepath, attendance_id]);
 
     const subject = `Sertifikat - ${attendance.nama_kegiatan}`;
     const html = `
@@ -219,45 +243,36 @@ export const sendCertificate = async (req, res) => {
       <p>Salam,<br>BBPMP</p>
     `;
 
-    const certificatePath = path.join(__dirname, '..', attendance.certificate_path);
+    const certificatePath = path.join(__dirname, "..", genResult.filepath);
 
     // Send email
-    const emailResult = await sendCertificateEmail(
-      attendance.email,
-      subject,
-      html,
-      [
-        {
-          filename: `Sertifikat-${attendance.nama_lengkap}.pdf`,
-          path: certificatePath
-        }
-      ]
-    );
+    const emailResult = await sendCertificateEmail(attendance.email, subject, html, [
+      {
+        filename: `Sertifikat-${attendance.nama_lengkap}.pdf`,
+        path: certificatePath,
+      },
+    ]);
 
     if (!emailResult.success) {
       throw new Error(emailResult.error);
     }
 
     // Update status
-    await pool.query(
-      'UPDATE presensi SET status = ?, sent_at = NOW() WHERE id = ?',
-      ['sertifikat_terkirim', attendance_id]
-    );
+    await pool.query("UPDATE presensi SET status = ?, sent_at = NOW() WHERE id = ?", ["sertifikat_terkirim", attendance_id]);
 
     res.json({
       success: true,
-      message: 'Certificate sent successfully',
+      message: "Certificate sent successfully",
       data: {
         email: attendance.email,
-        sent_at: new Date()
-      }
+        sent_at: new Date(),
+      },
     });
-
   } catch (error) {
-    console.error('Send certificate error:', error);
+    console.error("Send certificate error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to send certificate'
+      message: "Failed to send certificate",
     });
   }
 };
@@ -267,29 +282,30 @@ export const sendEventCertificates = async (req, res) => {
   try {
     const { event_id } = req.params;
 
-    // Get all attendances with certificates
+    // Get all attendances that have a certificate number (eligible to receive email).
+    // certificate_path is intentionally NOT required here — the email worker will
+    // regenerate a fresh PDF before sending so recipients always get the latest version.
     const [attendances] = await pool.query(
       `SELECT a.*, e.nama_kegiatan
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
-       WHERE a.event_id = ? AND a.certificate_path IS NOT NULL
+       WHERE a.event_id = ? AND a.nomor_sertifikat IS NOT NULL
        ORDER BY a.urutan_absensi ASC`,
-      [event_id]
+      [event_id],
     );
 
     if (attendances.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'No certificates found to send'
+        message: "No eligible attendances found (no certificate numbers assigned)",
       });
     }
 
-    // Add jobs to email queue
+    // Add jobs to email queue. The worker fetches all fresh data itself.
     const jobs = [];
     for (const attendance of attendances) {
       const job = await emailQueue.add({
         attendance_id: attendance.id,
-        event_name: attendance.nama_kegiatan
       });
       jobs.push(job);
     }
@@ -301,17 +317,68 @@ export const sendEventCertificates = async (req, res) => {
         total: attendances.length,
         queued: jobs.length,
         queue_info: {
-          name: 'email-sending',
-          message: 'Emails are being sent in the background. Check queue status for progress.'
-        }
-      }
+          name: "email-sending",
+          message: "Emails are being sent in the background. Check queue status for progress.",
+        },
+      },
     });
-
   } catch (error) {
-    console.error('Send event certificates error:', error);
+    console.error("Send event certificates error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to queue email sending jobs'
+      message: "Failed to queue email sending jobs",
+    });
+  }
+};
+
+// Send only remaining (not-yet-sent) certificates for an event
+export const sendRemainingEventCertificates = async (req, res) => {
+  try {
+    const { event_id } = req.params;
+
+    // Get all attendances that have a certificate number and are NOT marked as sent
+    const [attendances] = await pool.query(
+      `SELECT a.*, e.nama_kegiatan
+       FROM presensi a
+       JOIN kegiatan e ON a.event_id = e.id
+       WHERE a.event_id = ? AND a.nomor_sertifikat IS NOT NULL AND a.status != 'sertifikat_terkirim'
+       ORDER BY a.urutan_absensi ASC`,
+      [event_id],
+    );
+
+    if (attendances.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No remaining eligible attendances found (either all sent or no certificate numbers)",
+      });
+    }
+
+    // Add jobs to email queue for only the remaining attendances
+    const jobs = [];
+    for (const attendance of attendances) {
+      const job = await emailQueue.add({
+        attendance_id: attendance.id,
+      });
+      jobs.push(job);
+    }
+
+    res.json({
+      success: true,
+      message: `Added ${jobs.length} email sending jobs to queue for remaining certificates`,
+      data: {
+        total_remaining: attendances.length,
+        queued: jobs.length,
+        queue_info: {
+          name: "email-sending",
+          message: "Remaining emails are being sent in the background. Check queue status for progress.",
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Send remaining event certificates error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to queue remaining email sending jobs",
     });
   }
 };
@@ -327,28 +394,27 @@ export const getCertificateHistory = async (req, res) => {
        FROM presensi
        WHERE event_id = ?
        ORDER BY urutan_absensi ASC`,
-      [event_id]
+      [event_id],
     );
 
     const stats = {
       total: attendances.length,
-      menunggu_sertifikat: attendances.filter(a => a.status === 'menunggu_sertifikat').length,
-      sertifikat_terkirim: attendances.filter(a => a.status === 'sertifikat_terkirim').length
+      menunggu_sertifikat: attendances.filter((a) => a.status === "menunggu_sertifikat").length,
+      sertifikat_terkirim: attendances.filter((a) => a.status === "sertifikat_terkirim").length,
     };
 
     res.json({
       success: true,
       data: {
         stats,
-        attendances
-      }
+        attendances,
+      },
     });
-
   } catch (error) {
-    console.error('Get certificate history error:', error);
+    console.error("Get certificate history error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -357,8 +423,8 @@ export const getCertificateHistory = async (req, res) => {
 export const validateCertificate = async (req, res) => {
   try {
     const { certificate_number } = req.params;
-    
-    console.log('Validating certificate:', certificate_number);
+
+    console.log("Validating certificate:", certificate_number);
 
     // Get certificate data from database
     const [attendances] = await pool.query(
@@ -388,16 +454,16 @@ export const validateCertificate = async (req, res) => {
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
        WHERE a.nomor_sertifikat = ?`,
-      [certificate_number]
+      [certificate_number],
     );
 
-    console.log('Found attendances:', attendances.length);
+    console.log("Found attendances:", attendances.length);
 
     if (attendances.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Sertifikat tidak ditemukan',
-        valid: false
+        message: "Sertifikat tidak ditemukan",
+        valid: false,
       });
     }
 
@@ -405,17 +471,17 @@ export const validateCertificate = async (req, res) => {
 
     // Format dates for response
     const formatDate = (date) => {
-      return new Date(date).toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
+      return new Date(date).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
       });
     };
 
     res.json({
       success: true,
       valid: true,
-      message: 'Sertifikat valid',
+      message: "Sertifikat valid",
       data: {
         participant: {
           nama_lengkap: data.nama_lengkap,
@@ -427,7 +493,7 @@ export const validateCertificate = async (req, res) => {
           nomor_hp: data.nomor_hp,
           pangkat_golongan: data.pangkat_golongan,
           jabatan: data.jabatan,
-          email: data.email
+          email: data.email,
         },
         event: {
           nama_kegiatan: data.nama_kegiatan,
@@ -435,24 +501,23 @@ export const validateCertificate = async (req, res) => {
           tanggal_mulai: formatDate(data.tanggal_mulai),
           tanggal_selesai: formatDate(data.tanggal_selesai),
           jam_mulai: data.jam_mulai,
-          jam_selesai: data.jam_selesai
+          jam_selesai: data.jam_selesai,
         },
         certificate: {
           nomor_sertifikat: data.nomor_sertifikat,
           status: data.status,
           tanggal_diterbitkan: formatDate(data.created_at),
           tanggal_dikirim: data.sent_at ? formatDate(data.sent_at) : null,
-          certificate_path: data.certificate_path
-        }
-      }
+          certificate_path: data.certificate_path,
+        },
+      },
     });
-
   } catch (error) {
-    console.error('Validate certificate error:', error);
+    console.error("Validate certificate error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      valid: false
+      message: "Server error",
+      valid: false,
     });
   }
 };
@@ -468,13 +533,13 @@ export const downloadCertificate = async (req, res) => {
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
        WHERE a.nomor_sertifikat = ?`,
-      [certificate_number]
+      [certificate_number],
     );
 
     if (attendances.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Sertifikat tidak ditemukan'
+        message: "Sertifikat tidak ditemukan",
       });
     }
 
@@ -484,45 +549,44 @@ export const downloadCertificate = async (req, res) => {
     if (!attendance.certificate_path) {
       return res.status(404).json({
         success: false,
-        message: 'File sertifikat belum dibuat'
+        message: "File sertifikat belum dibuat",
       });
     }
 
-    const certificatePath = path.join(__dirname, '..', attendance.certificate_path);
+    const certificatePath = path.join(__dirname, "..", attendance.certificate_path);
 
     // Check if file exists
     if (!fs.existsSync(certificatePath)) {
       return res.status(404).json({
         success: false,
-        message: 'File sertifikat tidak ditemukan'
+        message: "File sertifikat tidak ditemukan",
       });
     }
 
     // Set headers for download
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="Sertifikat-${attendance.nama_lengkap}.pdf"`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="Sertifikat-${attendance.nama_lengkap}.pdf"`);
 
     // Send file
     const fileStream = fs.createReadStream(certificatePath);
-    
-    fileStream.on('error', (err) => {
-      console.error('File stream error:', err);
+
+    fileStream.on("error", (err) => {
+      console.error("File stream error:", err);
       if (!res.headersSent) {
         res.status(500).json({
           success: false,
-          message: 'Gagal membaca file sertifikat'
+          message: "Gagal membaca file sertifikat",
         });
       }
     });
 
     fileStream.pipe(res);
-
   } catch (error) {
-    console.error('Download certificate error:', error);
+    console.error("Download certificate error:", error);
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
-        message: 'Gagal mengunduh sertifikat'
+        message: "Gagal mengunduh sertifikat",
       });
     }
   }
@@ -551,22 +615,19 @@ export const getQueueStatus = async (req, res) => {
 
     if (event_id) {
       // Get attendances for this event
-      const [attendances] = await pool.query(
-        'SELECT id FROM presensi WHERE event_id = ?',
-        [event_id]
-      );
-      const attendanceIds = attendances.map(a => a.id);
+      const [attendances] = await pool.query("SELECT id FROM presensi WHERE event_id = ?", [event_id]);
+      const attendanceIds = attendances.map((a) => a.id);
 
       // Count jobs for this event
-      eventCertJobs.waiting = certWaiting.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
-      eventCertJobs.active = certActive.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
-      eventCertJobs.completed = certCompleted.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
-      eventCertJobs.failed = certFailed.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+      eventCertJobs.waiting = certWaiting.filter((j) => attendanceIds.includes(j.data.attendance_id)).length;
+      eventCertJobs.active = certActive.filter((j) => attendanceIds.includes(j.data.attendance_id)).length;
+      eventCertJobs.completed = certCompleted.filter((j) => attendanceIds.includes(j.data.attendance_id)).length;
+      eventCertJobs.failed = certFailed.filter((j) => attendanceIds.includes(j.data.attendance_id)).length;
 
-      eventEmailJobs.waiting = emailWaiting.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
-      eventEmailJobs.active = emailActive.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
-      eventEmailJobs.completed = emailCompleted.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
-      eventEmailJobs.failed = emailFailed.filter(j => attendanceIds.includes(j.data.attendance_id)).length;
+      eventEmailJobs.waiting = emailWaiting.filter((j) => attendanceIds.includes(j.data.attendance_id)).length;
+      eventEmailJobs.active = emailActive.filter((j) => attendanceIds.includes(j.data.attendance_id)).length;
+      eventEmailJobs.completed = emailCompleted.filter((j) => attendanceIds.includes(j.data.attendance_id)).length;
+      eventEmailJobs.failed = emailFailed.filter((j) => attendanceIds.includes(j.data.attendance_id)).length;
     }
 
     res.json({
@@ -577,27 +638,26 @@ export const getQueueStatus = async (req, res) => {
             waiting: certWaiting.length,
             active: certActive.length,
             completed: certCompleted.length,
-            failed: certFailed.length
+            failed: certFailed.length,
           },
-          event: event_id ? eventCertJobs : null
+          event: event_id ? eventCertJobs : null,
         },
         email_queue: {
           total: {
             waiting: emailWaiting.length,
             active: emailActive.length,
             completed: emailCompleted.length,
-            failed: emailFailed.length
+            failed: emailFailed.length,
           },
-          event: event_id ? eventEmailJobs : null
-        }
-      }
+          event: event_id ? eventEmailJobs : null,
+        },
+      },
     });
-
   } catch (error) {
-    console.error('Get queue status error:', error);
+    console.error("Get queue status error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get queue status'
+      message: "Failed to get queue status",
     });
   }
 };
@@ -606,8 +666,8 @@ export const getQueueStatus = async (req, res) => {
 export const retryFailedJobs = async (req, res) => {
   try {
     const { queue_type } = req.params; // 'certificate' or 'email'
-    
-    const queue = queue_type === 'certificate' ? certificateQueue : emailQueue;
+
+    const queue = queue_type === "certificate" ? certificateQueue : emailQueue;
     const failedJobs = await queue.getFailed();
 
     let retriedCount = 0;
@@ -621,15 +681,14 @@ export const retryFailedJobs = async (req, res) => {
       message: `Retried ${retriedCount} failed jobs`,
       data: {
         queue: queue_type,
-        retried: retriedCount
-      }
+        retried: retriedCount,
+      },
     });
-
   } catch (error) {
-    console.error('Retry failed jobs error:', error);
+    console.error("Retry failed jobs error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to retry jobs'
+      message: "Failed to retry jobs",
     });
   }
 };
@@ -637,23 +696,22 @@ export const retryFailedJobs = async (req, res) => {
 // Clean completed jobs
 export const cleanCompletedJobs = async (req, res) => {
   try {
-    const certCleaned = await certificateQueue.clean(0, 'completed');
-    const emailCleaned = await emailQueue.clean(0, 'completed');
+    const certCleaned = await certificateQueue.clean(0, "completed");
+    const emailCleaned = await emailQueue.clean(0, "completed");
 
     res.json({
       success: true,
-      message: 'Cleaned completed jobs',
+      message: "Cleaned completed jobs",
       data: {
         certificate_queue: certCleaned,
-        email_queue: emailCleaned
-      }
+        email_queue: emailCleaned,
+      },
     });
-
   } catch (error) {
-    console.error('Clean completed jobs error:', error);
+    console.error("Clean completed jobs error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to clean jobs'
+      message: "Failed to clean jobs",
     });
   }
 };

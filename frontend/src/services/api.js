@@ -1,7 +1,10 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+// Base server URL without /api suffix (for asset/image URLs)
+const SERVER_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+
 // Export for use in components that need direct fetch
-export { API_BASE_URL };
+export { API_BASE_URL, SERVER_BASE_URL };
 
 const getToken = () => localStorage.getItem("token");
 const setToken = (token) => localStorage.setItem("token", token);
@@ -177,23 +180,23 @@ export const reportAPI = {
         ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
-    
+
     if (!response.ok) {
       // Try to parse error message
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal download laporan');
+        throw new Error(errorData.message || "Gagal download laporan");
       }
-      throw new Error('Gagal download laporan');
+      throw new Error("Gagal download laporan");
     }
-    
+
     // Verify we got a PDF, not HTML
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/pdf')) {
-      throw new Error('Server tidak mengembalikan file PDF');
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/pdf")) {
+      throw new Error("Server tidak mengembalikan file PDF");
     }
-    
+
     return response.blob();
   },
 };
@@ -275,6 +278,7 @@ export const certificateAPI = {
   // Event-level certificate operations
   generateEvent: async (eventId) => fetchWithAuth(`/certificates/generate-event/${eventId}`, { method: "POST" }),
   sendEvent: async (eventId) => fetchWithAuth(`/certificates/send-event/${eventId}`, { method: "POST" }),
+  sendRemainingEvent: async (eventId) => fetchWithAuth(`/certificates/send-event-remaining/${eventId}`, { method: "POST" }),
   getHistory: async (eventId) => fetchWithAuth(`/certificates/history/${eventId}`, { method: "GET" }),
 
   // Validate certificate (public endpoint)

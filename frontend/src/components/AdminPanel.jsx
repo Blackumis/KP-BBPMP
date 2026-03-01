@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { eventsAPI, templatesAPI, officialsAPI } from "../services/api";
+import { eventsAPI, templatesAPI, officialsAPI, SERVER_BASE_URL } from "../services/api";
 import CertificateEditor from "./CertificateEditor";
 import { showNotification } from "./Notification";
 
@@ -165,7 +165,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     // Build full URL for template if available
     let templatePreviewUrl = null;
     if (editEvent.template_sertifikat) {
-      const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/api\/?$/i, "");
+      const apiBase = SERVER_BASE_URL;
       templatePreviewUrl = `${apiBase}/${editEvent.template_sertifikat}`;
     }
 
@@ -470,106 +470,6 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Template / Background Sertifikat</label>
-
-              {/* Source Toggle - Styled like tabs */}
-              <div className="flex mb-4">
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, templateSource: "upload", templateId: null }))}
-                  className={`flex-1 py-3 px-4 text-sm font-semibold transition-all border-b-4 ${
-                    formData.templateSource === "upload" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    Upload Baru
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, templateSource: "template", templateFile: null }))}
-                  className={`flex-1 py-3 px-4 text-sm font-semibold transition-all border-b-4 ${
-                    formData.templateSource === "template" ? "border-blue-600 text-blue-700 bg-blue-50" : "border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                      />
-                    </svg>
-                    Pilih Template
-                  </div>
-                </button>
-              </div>
-
-              {/* Upload Section */}
-              {formData.templateSource === "upload" && (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition relative overflow-hidden group">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        setFormData((prev) => {
-                          if (prev.templatePreview && prev.templatePreview.startsWith("blob:")) {
-                            try {
-                              URL.revokeObjectURL(prev.templatePreview);
-                            } catch (err) {
-                              console.warn("Failed to revoke previous template preview URL", err);
-                            }
-                          }
-                          const url = URL.createObjectURL(file);
-                          return {
-                            ...prev,
-                            templateFile: file,
-                            templatePreview: url,
-                            templateName: file.name,
-                            templateId: null,
-                          };
-                        });
-                      }
-                    }}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-
-                  {formData.templatePreview ? (
-                    <div className="relative w-full h-32 md:h-48 bg-gray-100 rounded-md overflow-hidden">
-                      <img
-                        src={formData.templatePreview}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        onError={() => setFormData((prev) => ({ ...prev, templatePreview: null, templateName: null }))}
-                      />
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-20 pointer-events-none">
-                        <span className="text-white font-medium">Klik untuk ganti gambar</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center pointer-events-none">
-                      <div className="h-12 w-12 text-gray-400 mb-2">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          ></path>
-                        </svg>
-                      </div>
-                      <p className="text-sm text-gray-600 font-medium">Klik untuk upload gambar sertifikat</p>
-                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG (Max. 5MB)</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Template Selection Section */}
               {formData.templateSource === "template" && (
                 <div>
@@ -606,8 +506,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
                         {templates.map((template) => {
-                          const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/api\/?$/i, "");
-                          const imageUrl = `${apiBase}/${template.image_path}`;
+                          const imageUrl = `${SERVER_BASE_URL}/${template.image_path}`;
                           const isSelected = formData.templateId === template.id;
                           return (
                             <div

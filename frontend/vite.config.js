@@ -7,7 +7,7 @@ import path from "path";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
-    outDir: path.resolve(__dirname, "../backend/public"),
+    outDir: path.resolve(__dirname, "./dist"),
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, "index.html"),
