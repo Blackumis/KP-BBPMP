@@ -180,23 +180,23 @@ export const reportAPI = {
         ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
-    
+
     if (!response.ok) {
       // Try to parse error message
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal download laporan');
+        throw new Error(errorData.message || "Gagal download laporan");
       }
-      throw new Error('Gagal download laporan');
+      throw new Error("Gagal download laporan");
     }
-    
+
     // Verify we got a PDF, not HTML
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/pdf')) {
-      throw new Error('Server tidak mengembalikan file PDF');
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/pdf")) {
+      throw new Error("Server tidak mengembalikan file PDF");
     }
-    
+
     return response.blob();
   },
 };
@@ -278,6 +278,7 @@ export const certificateAPI = {
   // Event-level certificate operations
   generateEvent: async (eventId) => fetchWithAuth(`/certificates/generate-event/${eventId}`, { method: "POST" }),
   sendEvent: async (eventId) => fetchWithAuth(`/certificates/send-event/${eventId}`, { method: "POST" }),
+  sendRemainingEvent: async (eventId) => fetchWithAuth(`/certificates/send-event-remaining/${eventId}`, { method: "POST" }),
   getHistory: async (eventId) => fetchWithAuth(`/certificates/history/${eventId}`, { method: "GET" }),
 
   // Validate certificate (public endpoint)
