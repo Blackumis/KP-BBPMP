@@ -102,26 +102,12 @@ const AttendanceList = ({ event, onBack }) => {
    * Download certificate for a single attendance
    */
   const handleDownloadCertificate = async (attendance) => {
-    // Validasi apakah sertifikat sudah dibuat
-    if (!attendance.certificate_url) {
+    // Validate that a certificate number exists
+    if (!attendance.nomor_sertifikat) {
       showNotification(`Sertifikat untuk ${attendance.nama_lengkap} belum dibuat. Silakan buat terlebih dahulu.`, "warning");
       return;
     }
 
-    try {
-      // Proses download
-      window.open(attendance.certificate_url, "_blank");
-    } catch (error) {
-      showNotification("Terjadi kesalahan saat mengunduh sertifikat.", "error");
-    }
-    {
-      filteredAttendances.length > itemsPerPage && (
-        <>
-          Menampilkan {(currentPage - 1) * itemsPerPage + 1} -{Math.min(currentPage * itemsPerPage, filteredAttendances.length)}
-          dari {filteredAttendances.length} peserta
-        </>
-      );
-    }
     try {
       setButtonLoading(attendance.id, "download", true);
 
