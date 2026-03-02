@@ -178,7 +178,7 @@ const OfficialsManagement = () => {
           <table className="min-w-full bg-white">
             <thead className="bg-gray-100 border-b-2 border-gray-200">
               <tr>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
+                <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
                 <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama</th>
                 <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Jabatan</th>
                 <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanda Tangan</th>
@@ -189,9 +189,9 @@ const OfficialsManagement = () => {
             <tbody className="divide-y divide-gray-200">
               {officials.map((official, index) => (
                 <tr key={official.id} className="hover:bg-gray-50 transition duration-150">
-                  <td className="py-4 px-4 text-sm text-gray-500">{index + 1}</td>
-                  <td className="py-4 px-4 text-sm font-medium text-gray-900">{official.name}</td>
-                  <td className="py-4 px-4 text-sm text-gray-500">{official.position}</td>
+                  <td className="py-4 px-4 text-center text-sm text-gray-500">{index + 1}</td>
+                  <td className="py-4 px-4 text-left text-sm font-medium text-gray-900">{official.name}</td>
+                  <td className="py-4 px-4 text-left text-sm text-gray-500">{official.position}</td>
                   <td className="py-4 px-4 text-center">
                     {official.signature_image_path ? (
                       <img
