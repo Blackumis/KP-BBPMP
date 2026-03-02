@@ -328,7 +328,7 @@ const ListEvents = () => {
                   return (
                     <tr key={event.id} className={`hover:bg-gray-50 transition duration-150 ${isExpired ? "bg-orange-50" : ""}`}>
                       <td className="py-4 px-4 text-sm text-center text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                      <td className="py-4 px-4 text-sm font-medium text-gray-900 max-w-50" title={event.nama_kegiatan}>
+                      <td className="py-4 px-4 text-sm font-medium text-center text-gray-900 max-w-50" title={event.nama_kegiatan}>
                         {event.nama_kegiatan}
                       </td>
                       <td className="py-4 px-4 text-sm text-center text-gray-500">{event.nomor_surat || "-"}</td>
