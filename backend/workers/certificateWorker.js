@@ -96,8 +96,9 @@ emailQueue.process(async (job) => {
       `SELECT a.*,
               e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai,
               e.template_sertifikat, e.nomor_surat, e.certificate_layout,
-              e.official_id, e.official_qr_path,
-              o.signature_image_path as official_signature_path
+              e.official_id,
+              o.signature_image_path as official_signature_path,
+              o.signature_qr_path as official_qr_path
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
        LEFT JOIN pejabat o ON e.official_id = o.id
