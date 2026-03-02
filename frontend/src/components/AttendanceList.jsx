@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { attendanceAPI, certificateAPI, reportAPI } from "../services/api";
-import { downloadPDF } from "../utils/certificateUtils";
+import { downloadPDF} from "../utils/certificateUtils";
 import { showNotification } from "../components/Notification";
 import ConfirmDialog from "../components/ConfirmDialog";
 
@@ -9,7 +9,6 @@ const AttendanceList = ({ event, onBack }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Loading states for individual attendance actions
   const [loadingStates, setLoadingStates] = useState({});
@@ -20,7 +19,6 @@ const AttendanceList = ({ event, onBack }) => {
     sendAll: false,
     viewHistory: false,
     generateReport: false,
-    sendRemaining: false,
   });
 
   const [confirmDialog, setConfirmDialog] = useState({
@@ -32,14 +30,12 @@ const AttendanceList = ({ event, onBack }) => {
   });
 
   useEffect(() => {
-    const loadAttendances = async () => {
-      setIsLoading(true);
+    const load = async () => {
       try {
         // Fetch ALL attendances without limit
-        const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: "all" });
+        const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 'all' });
         if (response.success) {
           setAttendances(response.data.attendances || []);
-          setTotalItems(response.data.pagination?.total || 0);
         }
       } catch (err) {
         console.error("Failed to load attendances:", err);
@@ -48,11 +44,8 @@ const AttendanceList = ({ event, onBack }) => {
         setIsLoading(false);
       }
     };
-    if (event) {
-      loadAttendances();
-    }
-  }, [event, currentPage, selectedItemsPerPage]);
-
+    load();
+  }, [event]);
 
   // Helper to set loading state for a specific button action
   const setButtonLoading = (attendanceId, action, loading) => {
@@ -105,29 +98,15 @@ const AttendanceList = ({ event, onBack }) => {
    * Download certificate for a single attendance
    */
   const handleDownloadCertificate = async (attendance) => {
-    // Validasi apakah sertifikat sudah dibuat
-    if (!attendance.certificate_url) {
+    // Check if certificate exists
+    if (!attendance.nomor_sertifikat) {
       showNotification(`Sertifikat untuk ${attendance.nama_lengkap} belum dibuat. Silakan buat terlebih dahulu.`, "warning");
       return;
     }
 
     try {
-      // Proses download
-      window.open(attendance.certificate_url, "_blank");
-    } catch (error) {
-      showNotification("Terjadi kesalahan saat mengunduh sertifikat.", "error");
-    }
-    {
-      filteredAttendances.length > itemsPerPage && (
-        <>
-          Menampilkan {(currentPage - 1) * itemsPerPage + 1} -{Math.min(currentPage * itemsPerPage, filteredAttendances.length)}
-          dari {filteredAttendances.length} peserta
-        </>
-      );
-    }
-    try {
       setButtonLoading(attendance.id, "download", true);
-
+      
       // Use the certificate number to download
       const blob = await certificateAPI.downloadByCertificateNumber(attendance.nomor_sertifikat);
       downloadPDF(blob, `Sertifikat-${attendance.nama_lengkap.replace(/\s+/g, "_")}.pdf`);
@@ -194,10 +173,9 @@ const AttendanceList = ({ event, onBack }) => {
 
             // Refresh attendance list
             try {
-              const refreshed = await attendanceAPI.getByEvent(event.id, { page: currentPage, limit: selectedItemsPerPage });
+              const refreshed = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 1000 });
               if (refreshed.success) {
                 setAttendances(refreshed.data.attendances || []);
-                setTotalItems(refreshed.data.pagination?.total || 0);
               }
             } catch (err) {
               console.error("Failed to refresh attendances:", err);
@@ -235,43 +213,6 @@ const AttendanceList = ({ event, onBack }) => {
           showNotification(err.message || "Gagal mengirim sertifikat", "error");
         } finally {
           setEventLoading((prev) => ({ ...prev, sendAll: false }));
-        }
-      },
-    });
-  };
-
-  /**
-   * Send only remaining (not-yet-sent) certificates for the event
-   */
-  const handleSendRemainingCertificates = () => {
-    setConfirmDialog({
-      isOpen: true,
-      title: "Kirim Sisa Sertifikat",
-      message: `Kirim sertifikat untuk peserta yang belum menerima (sisa)?`,
-      type: "warning",
-      onConfirm: async () => {
-        try {
-          setEventLoading((prev) => ({ ...prev, sendRemaining: true }));
-          const response = await certificateAPI.sendRemainingEvent(event.id);
-
-          if (response.success) {
-            showNotification(`Berhasil menambahkan ${response.data?.queued || 0} pekerjaan pengiriman.`, "success");
-
-            // Refresh attendance list to reflect any status changes
-            try {
-              const refreshed = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 1000 });
-              if (refreshed.success) {
-                setAttendances(refreshed.data.attendances || []);
-              }
-            } catch (err) {
-              console.error("Failed to refresh attendances after sendRemaining:", err);
-            }
-          }
-        } catch (err) {
-          console.error("Error sending remaining certificates:", err);
-          showNotification(err.message || "Gagal mengirim sisa sertifikat", "error");
-        } finally {
-          setEventLoading((prev) => ({ ...prev, sendRemaining: false }));
         }
       },
     });
@@ -416,13 +357,13 @@ const AttendanceList = ({ event, onBack }) => {
       setEventLoading((prev) => ({ ...prev, generateReport: true }));
 
       const blob = await reportAPI.downloadAttendanceReport(event.id);
-
+      
       if (blob.size === 0) {
         throw new Error("File PDF kosong");
       }
 
       // Verify blob type is PDF
-      if (!blob.type.includes("application/pdf")) {
+      if (!blob.type.includes('application/pdf')) {
         throw new Error("File yang diunduh bukan PDF");
       }
 
@@ -448,10 +389,9 @@ const AttendanceList = ({ event, onBack }) => {
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
-      const response = await attendanceAPI.getByEvent(event.id, { page: currentPage, limit: selectedItemsPerPage });
+      const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 1000 });
       if (response.success) {
         setAttendances(response.data.attendances || []);
-        setTotalItems(response.data.pagination?.total || 0);
         showNotification("Data berhasil dimuat ulang", "success");
       }
     } catch (err) {
@@ -471,64 +411,6 @@ const AttendanceList = ({ event, onBack }) => {
       </div>
     );
   }
-
-  // Filter attendances based on search query (search across displayed fields)
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const filteredAttendances = normalizedQuery
-    ? attendances.filter((a) => {
-        const fields = [a.nama_lengkap, a.unit_kerja, a.email, a.nomor_sertifikat, a.status, a.nip, a.nomor_hp];
-        return fields.some((f) => (f || "").toString().toLowerCase().includes(normalizedQuery));
-      })
-    : attendances;
-
-  // Certificate counts (based on filtered results)
-  const totalWithCertificateNumber = filteredAttendances.filter((a) => a.nomor_sertifikat).length;
-  const sentCount = filteredAttendances.filter((a) => a.status === "sertifikat_terkirim").length;
-  const remainingCount = filteredAttendances.filter((a) => a.nomor_sertifikat && a.status !== "sertifikat_terkirim").length;
-  const totalPages = Math.ceil(totalItems / selectedItemsPerPage);
-
-  const getPaginationRange = (currentPage, totalPages, siblingCount = 1) => {
-    const totalPageNumbers = siblingCount * 2 + 3; // e.g., 1 ... 4 5 [6] 7 8 ... 10
-
-    if (totalPageNumbers >= totalPages) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-
-    const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
-    const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
-
-    const shouldShowLeftDots = leftSiblingIndex > 2;
-    const shouldShowRightDots = rightSiblingIndex < totalPages - 2; // Adjusted for better behavior
-
-    const firstPageIndex = 1;
-    const lastPageIndex = totalPages;
-
-    if (!shouldShowLeftDots && shouldShowRightDots) {
-      const leftItemCount = 3 + 2 * siblingCount; // Pages: 1, 2, ..., current-1, current, current+1, ...
-      const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
-      return [...leftRange, "...", lastPageIndex];
-    }
-
-    if (shouldShowLeftDots && !shouldShowRightDots) {
-      const rightItemCount = 3 + 2 * siblingCount; // Pages: ..., current-1, current, current+1, ..., total-1, total
-      const rightRange = Array.from({ length: rightItemCount }, (_, i) => totalPages - rightItemCount + i + 1);
-      return [firstPageIndex, "...", ...rightRange];
-    }
-
-    if (shouldShowLeftDots && shouldShowRightDots) {
-      const middleRange = Array.from({ length: rightSiblingIndex - leftSiblingIndex + 1 }, (_, i) => leftSiblingIndex + i);
-      return [firstPageIndex, "...", ...middleRange, "...", lastPageIndex];
-    }
-
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  };
-
-  const paginationRange = getPaginationRange(currentPage, totalPages);
-
-  const handleItemsPerPageChange = (e) => {
-    setSelectedItemsPerPage(Number(e.target.value));
-    setCurrentPage(1); // Reset to first page when items per page changes
-  };
 
   return (
     <>
@@ -567,24 +449,16 @@ const AttendanceList = ({ event, onBack }) => {
         {/* Event-Level Certificate Actions */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-4">Manajemen Sertifikat Kegiatan</h3>
-          <div className="flex items-center gap-4 mb-3">
-            <div className="text-sm text-gray-700">
-              Total peserta dengan nomor sertifikat: <span className="font-semibold">{totalWithCertificateNumber}</span>
-            </div>
-            <div className="text-sm text-green-700">
-              Terkirim: <span className="font-semibold">{sentCount}</span>
-            </div>
-            <div className="text-sm text-orange-700">
-              Belum terkirim: <span className="font-semibold">{remainingCount}</span>
-            </div>
-          </div>
-          {/* Buttons + Search */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={handleGenerateAllCertificates}
               disabled={eventLoading.generateAll || isLoading || attendances.length === 0}
               className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
+              {eventLoading.generateAll && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
               Buat Semua Sertifikat
             </button>
 
@@ -593,60 +467,24 @@ const AttendanceList = ({ event, onBack }) => {
               disabled={eventLoading.sendAll || isLoading || attendances.length === 0}
               className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
+              {eventLoading.sendAll && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
               Kirim Semua Sertifikat
             </button>
-
-            <button
-              onClick={handleSendRemainingCertificates}
-              disabled={eventLoading.sendRemaining || isLoading || remainingCount === 0}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              Kirim Sisa Sertifikat
-            </button>
-
             <button
               onClick={handleGenerateAttendanceReport}
               disabled={eventLoading.generateReport || isLoading || attendances.length === 0}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
+              {eventLoading.generateReport && <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M4 4a2 2 0 012-2h5.586A2 2 0 0113 2.586l3.414 3.414A2 2 0 0117 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm8 0v3h3l-3-3zM8 11a1 1 0 000 2h4a1 1 0 100-2H8z"
+                  clipRule="evenodd"
+                />
+              </svg>
               PDF Report Absensi
             </button>
-
-            {/* SEARCH DI KANAN */}
-            {/* SEARCH DI KANAN */}
-            <div className="ml-auto flex items-center gap-2 w-full md:w-auto">
-              <div className="relative w-full md:w-64">
-                {/* Icon Search */}
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m1.85-5.65a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" />
-                  </svg>
-                </span>
-
-                <input
-                  type="text"
-                  placeholder="Cari peserta..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full border rounded pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
-                />
-              </div>
-
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setCurrentPage(1);
-                  }}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-3 rounded"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
           </div>
         </div>
 
@@ -663,10 +501,6 @@ const AttendanceList = ({ event, onBack }) => {
             </svg>
             <p className="text-gray-500 text-lg">Belum ada peserta yang terdaftar.</p>
           </div>
-        ) : filteredAttendances.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <p className="text-gray-500 text-lg">Tidak ada peserta yang cocok dengan pencarian.</p>
-          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full bg-white">
@@ -682,10 +516,9 @@ const AttendanceList = ({ event, onBack }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredAttendances.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((a, i) => (
-                {attendances.map((a, i) => (
+                {attendances.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((a, i) => (
                   <tr key={a.id} className="hover:bg-gray-50 transition duration-150">
-                    <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * selectedItemsPerPage + i + 1}</td>
+                    <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + i + 1}</td>
                     <td className="py-4 px-4 text-sm font-medium text-gray-900">{a.nama_lengkap}</td>
                     <td className="py-4 px-4 text-sm text-gray-500">{a.unit_kerja}</td>
                     <td className="py-4 px-4 text-sm text-gray-500">{a.email}</td>
@@ -749,47 +582,30 @@ const AttendanceList = ({ event, onBack }) => {
         )}
 
         {/* Pagination */}
-        {totalItems > 0 && ( // Ensure pagination only shows if there are items
-          <div className="flex flex-col sm:flex-row items-center justify-between mt-8 py-4 border-t border-gray-200 gap-4">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>Tampilkan</span>
-              <select
-                value={selectedItemsPerPage}
-                onChange={handleItemsPerPageChange}
-                className="block w-full sm:w-20 rounded-md border-gray-300 shadow-sm text-sm py-1 px-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {[5, 10, 20, 50].map((num) => (
-                  <option key={num} value={num}>
-                    {num}
-                  </option>
-                ))}
-              </select>
-              <span>data per halaman</span>
+        {attendances.length > itemsPerPage && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t">
+            <div className="text-sm text-gray-500">
+              Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, attendances.length)} dari {attendances.length} peserta
             </div>
-
-            <div className="text-sm text-gray-700">
-              Menampilkan <span className="font-bold text-blue-600">{(currentPage - 1) * selectedItemsPerPage + 1} - {Math.min(currentPage * selectedItemsPerPage, totalItems)}</span> dari{" "}
-              <span className="font-bold text-blue-600">{totalItems}</span> peserta
-            </div>
-
-            <nav className="relative z-0 inline-flex rounded-md -space-x-px" aria-label="Pagination">
+            <div className="flex gap-2 items-center flex-wrap justify-center">
+              {/* Previous Button */}
               <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-blue-50 hover:text-white focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
+                className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Sebelumnya"
               >
-                <span className="sr-only">Sebelumnya</span>
-                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-
+              
               {/* Smart Pagination with ellipsis */}
               {(() => {
                 const totalPages = Math.ceil(attendances.length / itemsPerPage);
                 const pageNumbers = [];
                 const maxVisible = 7; // Show max 7 page numbers
-
+                
                 if (totalPages <= maxVisible) {
                   // Show all pages if total is small
                   for (let i = 1; i <= totalPages; i++) {
@@ -799,70 +615,47 @@ const AttendanceList = ({ event, onBack }) => {
                   // Smart pagination with ellipsis
                   if (currentPage <= 4) {
                     // Near start: 1 2 3 4 5 ... last
-                    pageNumbers.push(1, 2, 3, 4, 5, "...", totalPages);
+                    pageNumbers.push(1, 2, 3, 4, 5, '...', totalPages);
                   } else if (currentPage >= totalPages - 3) {
                     // Near end: 1 ... N-4 N-3 N-2 N-1 N
-                    pageNumbers.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                    pageNumbers.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
                   } else {
                     // Middle: 1 ... current-1 current current+1 ... last
-                    pageNumbers.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+                    pageNumbers.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
                   }
                 }
-
-                return pageNumbers.map((page, index) =>
-                  page === "..." ? (
-                    <span key={`ellipsis-${index}`} className="px-3 py-1 text-gray-500">
-                      ...
-                    </span>
+                
+                return pageNumbers.map((page, index) => (
+                  page === '...' ? (
+                    <span key={`ellipsis-${index}`} className="px-3 py-1 text-gray-500">...</span>
                   ) : (
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 text-sm font-medium rounded-md ${currentPage === page ? "bg-blue-600 text-white" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"}`}
+                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                        currentPage === page 
+                          ? 'bg-blue-600 text-white' 
+                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
                     >
                       {page}
                     </button>
-                  ),
-                );
+                  )
+                ));
               })()}
-
+              
               {/* Next Button */}
               <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(attendances.length / itemsPerPage)))}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(attendances.length / itemsPerPage)))}
                 disabled={currentPage === Math.ceil(attendances.length / itemsPerPage)}
                 className="p-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Selanjutnya"
-              {paginationRange.map((page, index) =>
-                page === "..." ? (
-                  <span key={index} className="relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm">
-                    ...
-                  </span>
-                ) : (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentPage(page)}
-                    aria-current={currentPage === page ? "page" : undefined}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors duration-150 ease-in-out shadow-sm focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      currentPage === page
-                        ? "z-10 bg-blue-600 border-blue-600 text-white font-semibold shadow-md"
-                        : "bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-white"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                )
-              )}
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-blue-50 hover:text-white focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-150 ease-in-out"
               >
-                <span className="sr-only">Berikutnya</span>
-                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
-            </nav>
+            </div>
           </div>
         )}
       </div>
