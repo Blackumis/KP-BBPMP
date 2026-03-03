@@ -11,6 +11,7 @@ import {
   getQueueStatus,
   retryFailedJobs,
   cleanCompletedJobs,
+  stopEmailQueue,
 } from "../controllers/certificateController.js";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 
@@ -33,5 +34,6 @@ router.get("/queue/status", authenticateToken, isAdmin, getQueueStatus);
 router.get("/queue/status/:event_id", authenticateToken, isAdmin, getQueueStatus);
 router.post("/queue/retry/:queue_type", authenticateToken, isAdmin, retryFailedJobs);
 router.post("/queue/clean", authenticateToken, isAdmin, cleanCompletedJobs);
+router.post("/queue/stop-email", authenticateToken, isAdmin, stopEmailQueue);
 
 export default router;

@@ -696,6 +696,29 @@ export const retryFailedJobs = async (req, res) => {
   }
 };
 
+// Stop (clear) all pending email jobs in the queue
+export const stopEmailQueue = async (req, res) => {
+  try {
+    const cleared = emailQueue.clearPending();
+    const stats = emailQueue.getStats();
+
+    res.json({
+      success: true,
+      message: `Berhasil menghentikan ${cleared} antrean email yang tersisa`,
+      data: {
+        cleared,
+        remaining_active: stats.active,
+      },
+    });
+  } catch (error) {
+    console.error('Stop email queue error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal menghentikan antrean email',
+    });
+  }
+};
+
 // Clean completed jobs
 export const cleanCompletedJobs = async (req, res) => {
   try {

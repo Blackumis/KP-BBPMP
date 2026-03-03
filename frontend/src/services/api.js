@@ -283,6 +283,10 @@ export const certificateAPI = {
 
   // Validate certificate (public endpoint)
   validate: async (certificateNumber) => fetchPublic(`/certificates/validate/${certificateNumber}`),
+
+  // Queue management
+  getQueueStatus: async (eventId) => fetchWithAuth(`/certificates/queue/status/${eventId}`),
+  stopEmailBatch: async () => fetchWithAuth('/certificates/queue/stop-email', { method: 'POST' }),
 };
 
 export const officialsAPI = {

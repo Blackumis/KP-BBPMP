@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { attendanceAPI, certificateAPI, reportAPI } from "../services/api";
 import { downloadPDF } from "../utils/certificateUtils";
 import { showNotification } from "../components/Notification";
@@ -21,7 +21,12 @@ const AttendanceList = ({ event, onBack }) => {
     viewHistory: false,
     generateReport: false,
     sendRemaining: false,
+    stopEmailBatch: false,
   });
+
+  // Email queue status for stop-batch button
+  const [emailQueueStatus, setEmailQueueStatus] = useState({ waiting: 0, active: 0 });
+  const queuePollRef = useRef(null);
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -48,6 +53,28 @@ const AttendanceList = ({ event, onBack }) => {
     };
     load();
   }, [event]);
+
+  // Poll email queue status every 4 seconds to show/hide stop button
+  const fetchEmailQueueStatus = useCallback(async () => {
+    try {
+      const res = await certificateAPI.getQueueStatus(event.id);
+      if (res.success && res.data?.email_queue?.event) {
+        const eq = res.data.email_queue.event;
+        setEmailQueueStatus({ waiting: eq.waiting || 0, active: eq.active || 0 });
+      } else if (res.success && res.data?.email_queue?.total) {
+        const eq = res.data.email_queue.total;
+        setEmailQueueStatus({ waiting: eq.waiting || 0, active: eq.active || 0 });
+      }
+    } catch (err) {
+      // Silently ignore polling errors
+    }
+  }, [event.id]);
+
+  useEffect(() => {
+    fetchEmailQueueStatus();
+    queuePollRef.current = setInterval(fetchEmailQueueStatus, 4000);
+    return () => clearInterval(queuePollRef.current);
+  }, [fetchEmailQueueStatus]);
 
   // Helper to set loading state for a specific button action
   const setButtonLoading = (attendanceId, action, loading) => {
@@ -441,6 +468,34 @@ const AttendanceList = ({ event, onBack }) => {
     }
   };
 
+  /**
+   * Stop all pending email batch jobs in the queue
+   */
+  const handleStopEmailBatch = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Hentikan Pengiriman Email",
+      message: `Hentikan ${emailQueueStatus.waiting} antrean email yang belum terkirim? Email yang sedang dikirim (${emailQueueStatus.active}) akan tetap dikirim hingga selesai.`,
+      type: "warning",
+      onConfirm: async () => {
+        try {
+          setEventLoading((prev) => ({ ...prev, stopEmailBatch: true }));
+          const response = await certificateAPI.stopEmailBatch();
+          if (response.success) {
+            showNotification(response.message || "Antrean email berhasil dihentikan", "success");
+            // Immediately refresh queue status
+            await fetchEmailQueueStatus();
+          }
+        } catch (err) {
+          console.error("Error stopping email batch:", err);
+          showNotification(err.message || "Gagal menghentikan antrean email", "error");
+        } finally {
+          setEventLoading((prev) => ({ ...prev, stopEmailBatch: false }));
+        }
+      },
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
@@ -515,6 +570,33 @@ const AttendanceList = ({ event, onBack }) => {
           </div>
           {/* Buttons + Search */}
           <div className="flex flex-wrap items-center gap-3">
+            {/* Stop Batch Email — only visible when email jobs are running */}
+            {(emailQueueStatus.waiting > 0 || emailQueueStatus.active > 0) && (
+              <div className="w-full flex items-center justify-between bg-orange-50 border border-orange-300 rounded-lg px-4 py-2 mb-1">
+                <div className="flex items-center gap-2 text-sm text-orange-800">
+                  <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                  <span>
+                    Batch email berjalan —{" "}
+                    <span className="font-semibold">{emailQueueStatus.waiting}</span> antrean,{" "}
+                    <span className="font-semibold">{emailQueueStatus.active}</span> sedang dikirim
+                  </span>
+                </div>
+                <button
+                  onClick={handleStopEmailBatch}
+                  disabled={eventLoading.stopEmailBatch || emailQueueStatus.waiting === 0}
+                  className="ml-4 bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                >
+                  {eventLoading.stopEmailBatch ? (
+                    <span className="inline-block w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></span>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                  Stop Batch Email
+                </button>
+              </div>
+            )}
             <button
               onClick={handleGenerateAllCertificates}
               disabled={eventLoading.generateAll || isLoading || attendances.length === 0}
