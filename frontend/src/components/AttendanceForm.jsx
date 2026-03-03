@@ -244,14 +244,13 @@ const AttendanceForm = ({ eventId }) => {
 
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
-    const formConfig = config.form_config || {};
 
-    if (passwordInput === formConfig.eventPassword) {
+    if (passwordInput === config.eventPassword) {
       setAccessGranted(true);
       setPasswordError("");
     } else {
-      setPasswordError("Password yang Anda masukkan salah");
-      showNotification("Password salah. Silakan coba lagi.", "error");
+      setPasswordError("Kata sandi yang Anda masukkan salah");
+      showNotification("Kata sandi salah. Silakan coba lagi.", "error");
     }
   };
 

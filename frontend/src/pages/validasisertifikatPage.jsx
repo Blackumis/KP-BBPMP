@@ -281,7 +281,7 @@ const ValidasiSertifikat = () => {
 
           {/* Footer Note */}
           <div className="mt-8 text-center pb-4">
-            <p className="text-sm text-gray-600">Halaman ini memverifikasi keaslian sertifikat yang diterbitkan oleh sistem KP BBPMP.</p>
+            <p className="text-sm text-gray-600">Halaman ini memverifikasi keaslian sertifikat yang diterbitkan oleh sistem BBPMP Jawa Tengah.</p>
           </div>
         </div>
       </main>

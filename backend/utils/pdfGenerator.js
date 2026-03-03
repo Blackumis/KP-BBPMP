@@ -100,7 +100,7 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
             case "nomor_sertifikat":
               return `Nomor Sertifikat: ${attendanceData.nomor_sertifikat}`;
             case "validation_url":
-              return `${process.env.FRONTEND_URL || "http://localhost:5173"}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
+              return `${process.env.FRONTEND_URL || "http://presensi.bbpmpjateng.id"}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
             case "signature_authority":
               return `TTD_ATASAN_${attendanceData.nomor_sertifikat}`;
             default:
@@ -249,7 +249,7 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
         doc.fontSize(10).text(`Nomor Sertifikat: ${attendanceData.nomor_sertifikat}`, 0, 450, { align: "center" });
 
         // Validation link - pointing to frontend
-        const validationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
+        const validationUrl = `${process.env.FRONTEND_URL || "http://presensi.bbpmpjateng.id"}/validasi/${encodeURIComponent(attendanceData.nomor_sertifikat)}`;
         doc
           .fontSize(9)
           .fillColor("blue")

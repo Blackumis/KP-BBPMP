@@ -424,7 +424,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Attendance Start Time</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Waktu Mulai Absensi</label>
                 <input
                   type="datetime-local"
                   name="mulai_waktu_absensi"
