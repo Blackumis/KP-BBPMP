@@ -63,10 +63,16 @@ certificateQueue.process(async (job) => {
 
     await job.progress(80);
 
-    // Update attendance record
+    // Update attendance record (only set status to 'menunggu_sertifikat' if not already sent)
     await pool.query(
-      'UPDATE presensi SET certificate_path = ?, status = ? WHERE id = ?',
-      [result.filepath, 'menunggu_sertifikat', attendance_id]
+      `UPDATE presensi 
+       SET certificate_path = ?, 
+           status = CASE 
+             WHEN status = 'sertifikat_terkirim' THEN 'sertifikat_terkirim'
+             ELSE 'menunggu_sertifikat'
+           END
+       WHERE id = ?`,
+      [result.filepath, attendance_id]
     );
 
     await job.progress(100);

@@ -249,8 +249,8 @@ const ListKopSurat = () => {
               <thead className="bg-gray-100 border-b-2 border-gray-200">
                 <tr>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Instansi / Unit</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Periode</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Instansi / Unit</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Periode</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Kop</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
@@ -259,9 +259,9 @@ const ListKopSurat = () => {
               <tbody className="divide-y divide-gray-200">
                 {kopSurats.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((kopSurat, index) => (
                   <tr key={kopSurat.id} className="hover:bg-gray-50 transition duration-150">
-                    <td className="py-4 px-4 text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                    <td className="py-4 px-4 text-sm font-medium text-gray-900">{kopSurat.nama_data}</td>
-                    <td className="py-4 px-4 text-sm text-gray-500">
+                    <td className="py-4 px-4 text-center text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                    <td className="py-4 px-4 text-left text-sm font-medium text-gray-900">{kopSurat.nama_data}</td>
+                    <td className="py-4 px-4 text-left text-sm text-gray-500">
                       {formatDate(kopSurat.periode_mulai)} - {formatDate(kopSurat.periode_selesai)}
                     </td>
                     <td className="py-4 px-4 text-center">

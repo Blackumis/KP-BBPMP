@@ -62,8 +62,23 @@ export const generateSingleCertificate = async (req, res) => {
       throw new Error("Failed to generate certificate");
     }
 
-    // Update attendance record
-    await pool.query("UPDATE presensi SET certificate_path = ?, status = ? WHERE id = ?", [result.filepath, "menunggu_sertifikat", attendance_id]);
+    // Update attendance record (only set status to 'menunggu_sertifikat' if not already sent)
+    await pool.query(
+      `UPDATE presensi 
+       SET certificate_path = ?, 
+           status = CASE 
+             WHEN status = 'sertifikat_terkirim' THEN 'sertifikat_terkirim'
+             ELSE 'menunggu_sertifikat'
+           END
+       WHERE id = ?`,
+      [result.filepath, attendance_id]
+    );
+
+    // Fetch updated attendance data to return current status
+    const [updatedAttendance] = await pool.query(
+      'SELECT nomor_sertifikat, status FROM presensi WHERE id = ?',
+      [attendance_id]
+    );
 
     res.json({
       success: true,
@@ -71,6 +86,8 @@ export const generateSingleCertificate = async (req, res) => {
       data: {
         certificate_path: result.filepath,
         download_url: `${process.env.BASE_URL}/${result.filepath}`,
+        nomor_sertifikat: updatedAttendance[0]?.nomor_sertifikat,
+        status: updatedAttendance[0]?.status,
       },
     });
   } catch (error) {
@@ -269,6 +286,7 @@ export const sendCertificate = async (req, res) => {
       data: {
         email: attendance.email,
         sent_at: new Date(),
+        status: "sertifikat_terkirim",
       },
     });
   } catch (error) {

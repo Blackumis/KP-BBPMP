@@ -101,7 +101,7 @@ const AttendanceList = ({ event, onBack }) => {
       if (response.success) {
         showNotification(`Sertifikat untuk ${attendance.nama_lengkap} berhasil dibuat`, "success");
 
-        // Update local state to reflect the generated certificate
+        // Update local state to reflect the generated certificate (preserve status from backend)
         setAttendances((prev) =>
           prev.map((a) =>
             a.id === attendance.id
@@ -109,7 +109,9 @@ const AttendanceList = ({ event, onBack }) => {
                   ...a,
                   file_path: response.data?.file_path,
                   certificate_url: response.data?.certificate_url,
+                  certificate_path: response.data?.certificate_path,
                   nomor_sertifikat: response.data?.nomor_sertifikat || a.nomor_sertifikat,
+                  status: response.data?.status || a.status, // Use status from backend
                 }
               : a,
           ),
@@ -170,6 +172,19 @@ const AttendanceList = ({ event, onBack }) => {
 
           if (response.success) {
             showNotification(`Sertifikat berhasil dikirim ke ${attendance.email}`, "success");
+            
+            // Update local state to reflect sent status
+            setAttendances((prev) =>
+              prev.map((a) =>
+                a.id === attendance.id
+                  ? {
+                      ...a,
+                      status: response.data?.status || 'sertifikat_terkirim',
+                      sent_at: response.data?.sent_at || new Date(),
+                    }
+                  : a,
+              ),
+            );
           }
         } catch (err) {
           console.error("Error sending certificate:", err);

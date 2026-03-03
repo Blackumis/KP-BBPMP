@@ -307,9 +307,9 @@ const ListEvents = () => {
               <thead className="bg-gray-100 border-b-2 border-gray-200">
                 <tr>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Kegiatan</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Nomor Surat</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Kegiatan</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nomor Surat</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Batas Waktu Absensi</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Peserta</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
@@ -327,12 +327,12 @@ const ListEvents = () => {
 
                   return (
                     <tr key={event.id} className={`hover:bg-gray-50 transition duration-150 ${isExpired ? "bg-orange-50" : ""}`}>
-                      <td className="py-4 px-4 text-sm text-center text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                      <td className="py-4 px-4 text-sm font-medium text-center text-gray-900 max-w-50" title={event.nama_kegiatan}>
+                      <td className="py-4 px-4 text-center text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                      <td className="py-4 px-4 text-left text-sm font-medium text-gray-900 max-w-50" title={event.nama_kegiatan}>
                         {event.nama_kegiatan}
                       </td>
-                      <td className="py-4 px-4 text-sm text-center text-gray-500">{event.nomor_surat || "-"}</td>
-                      <td className="py-4 px-4 text-sm text-center text-gray-500">
+                      <td className="py-4 px-4 text-left text-sm text-gray-500">{event.nomor_surat || "-"}</td>
+                      <td className="py-4 px-4 text-left text-sm text-gray-500">
                         {event.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString("id-ID", { year: "numeric", month: "short", day: "numeric" }) : "-"}
                       </td>
                       <td className="py-4 px-4 text-sm text-center align-middle">
