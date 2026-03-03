@@ -217,7 +217,7 @@ const AttendanceList = ({ event, onBack }) => {
 
             // Refresh attendance list
             try {
-              const refreshed = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 1000 });
+              const refreshed = await attendanceAPI.getByEvent(event.id, { page: 1, limit: "all" });
               if (refreshed.success) {
                 setAttendances(refreshed.data.attendances || []);
               }
@@ -470,7 +470,7 @@ const AttendanceList = ({ event, onBack }) => {
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
-      const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: 1000 });
+      const response = await attendanceAPI.getByEvent(event.id, { page: 1, limit: "all" });
       if (response.success) {
         setAttendances(response.data.attendances || []);
         showNotification("Data berhasil dimuat ulang", "success");

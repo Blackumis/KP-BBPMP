@@ -470,10 +470,10 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Template / Background Sertifikat</label>
-              {/* Template Selection Section */}
-              {formData.templateSource === "template" && (
-                <div>
-                  {loadingTemplates ? (
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">Pilih Template</label>
+                {loadingTemplates ? (
                     <div className="text-center py-8 text-gray-500 border border-gray-200 rounded-lg bg-gray-50">
                       <svg className="animate-spin h-8 w-8 mx-auto mb-2 text-blue-600" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -504,7 +504,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     </div>
                   ) : (
                     <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-80 overflow-y-auto p-2">
                         {templates.map((template) => {
                           const imageUrl = `${SERVER_BASE_URL}/${template.image_path}`;
                           const isSelected = formData.templateId === template.id;
@@ -512,7 +512,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                             <div
                               key={template.id}
                               className={`relative cursor-pointer rounded-lg overflow-hidden transition-all shadow-sm hover:shadow-md group ${
-                                isSelected ? "ring-2 ring-blue-500 ring-offset-2 bg-white" : "bg-white border border-gray-200 hover:border-blue-300"
+                                isSelected ? "ring-2 ring-blue-500 bg-white" : "bg-white border border-gray-200 hover:border-blue-300"
                               }`}
                             >
                               <div
@@ -523,6 +523,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                                     templatePreview: imageUrl,
                                     templateName: template.name,
                                     templateFile: null,
+                                    templateSource: 'template',
                                   }));
                                 }}
                                 className="relative h-20 bg-gray-100"
@@ -551,6 +552,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                                       templatePreview: imageUrl,
                                       templateName: template.name,
                                       templateFile: null,
+                                      templateSource: 'template',
                                     }));
                                   }}
                                   className={`text-xs font-medium truncate flex-1 ${isSelected ? "text-blue-700" : "text-gray-700"}`}
@@ -593,20 +595,6 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     </div>
                   )}
                 </div>
-              )}
-
-              {formData.templateName && formData.templateSource === "upload" && (
-                <p className="text-xs text-green-600 mt-3 flex items-center bg-green-50 px-3 py-2 rounded-md">
-                  <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  File terpilih: {formData.templateName}
-                </p>
-              )}
               {formData.templateId && formData.templateSource === "template" && (
                 <p className="text-xs text-green-600 mt-3 flex items-center bg-green-50 px-3 py-2 rounded-md">
                   <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
