@@ -20,6 +20,11 @@ export const createEvent = async (req, res) => {
         form_config = {};
       }
     }
+    const certificateEnabled = form_config?.certificateEnabled !== false;
+    form_config = {
+      ...(form_config || {}),
+      certificateEnabled,
+    };
 
     // Parse certificate_layout - it comes as JSON string from FormData
     let certificate_layout = req.body.certificate_layout;
@@ -76,20 +81,25 @@ export const createEvent = async (req, res) => {
     const { template_source = "upload", template_id } = req.body;
     let template_path = null;
     let final_template_id = null;
+    let final_template_source = null;
 
-    if (template_source === "upload" && req.file) {
-      template_path = "uploads/templates/" + req.file.filename;
-    } else if (template_source === "template" && template_id) {
-      // Verify template exists
-      const [templateCheck] = await pool.query("SELECT id, image_path FROM template_sertif WHERE id = ? AND is_active = TRUE", [template_id]);
-      if (templateCheck.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Selected template not found or inactive",
-        });
+    if (certificateEnabled) {
+      final_template_source = template_source;
+
+      if (template_source === "upload" && req.file) {
+        template_path = "uploads/templates/" + req.file.filename;
+      } else if (template_source === "template" && template_id) {
+        // Verify template exists
+        const [templateCheck] = await pool.query("SELECT id, image_path FROM template_sertif WHERE id = ? AND is_active = TRUE", [template_id]);
+        if (templateCheck.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Selected template not found or inactive",
+          });
+        }
+        final_template_id = template_id;
+        template_path = templateCheck[0].image_path;
       }
-      final_template_id = template_id;
-      template_path = templateCheck[0].image_path;
     }
 
     // Insert event with template_id, template_source, certificate_layout, and official_id
@@ -108,11 +118,11 @@ export const createEvent = async (req, res) => {
         mulai_waktu_absensi || null,
         batas_waktu_absensi,
         template_path,
-        certificate_layout ? JSON.stringify(certificate_layout) : null,
+        certificateEnabled && certificate_layout ? JSON.stringify(certificate_layout) : null,
         final_template_id,
-        template_source,
+        final_template_source,
         JSON.stringify(form_config || {}),
-        official_id || null,
+        certificateEnabled ? official_id || null : null,
         req.user.id,
       ],
     );
@@ -261,6 +271,20 @@ export const updateEvent = async (req, res) => {
       });
     }
 
+    let existingFormConfig = {};
+    try {
+      existingFormConfig = typeof existing[0].form_config === "string" ? JSON.parse(existing[0].form_config) : existing[0].form_config || {};
+    } catch (err) {
+      existingFormConfig = {};
+    }
+
+    const certificateEnabled = (form_config?.certificateEnabled ?? existingFormConfig?.certificateEnabled) !== false;
+    form_config = {
+      ...(existingFormConfig || {}),
+      ...(form_config || {}),
+      certificateEnabled,
+    };
+
     // Handle template source (upload or template)
     const { template_source, template_id } = req.body;
     let template_path = existing[0].template_sertifikat;
@@ -284,24 +308,32 @@ export const updateEvent = async (req, res) => {
       }
     };
 
-    if (template_source === "upload" && req.file) {
-      await safeDeleteOldUpload();
-      template_path = "uploads/templates/" + req.file.filename;
-      final_template_id = null;
-      final_template_source = "upload";
-    } else if (template_source === "template" && template_id) {
-      // Verify template exists
-      const [templateCheck] = await pool.query("SELECT id, image_path FROM template_sertif WHERE id = ? AND is_active = TRUE", [template_id]);
-      if (templateCheck.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Selected template not found or inactive",
-        });
+    if (certificateEnabled) {
+      if (template_source === "upload" && req.file) {
+        await safeDeleteOldUpload();
+        template_path = "uploads/templates/" + req.file.filename;
+        final_template_id = null;
+        final_template_source = "upload";
+      } else if (template_source === "template" && template_id) {
+        // Verify template exists
+        const [templateCheck] = await pool.query("SELECT id, image_path FROM template_sertif WHERE id = ? AND is_active = TRUE", [template_id]);
+        if (templateCheck.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Selected template not found or inactive",
+          });
+        }
+        await safeDeleteOldUpload();
+        template_path = templateCheck[0].image_path;
+        final_template_id = template_id;
+        final_template_source = "template";
       }
+    } else {
       await safeDeleteOldUpload();
-      template_path = templateCheck[0].image_path;
-      final_template_id = template_id;
-      final_template_source = "template";
+      template_path = null;
+      final_template_id = null;
+      final_template_source = null;
+      certificate_layout = null;
     }
 
     // Update event with proper template tracking, certificate_layout, and official_id
@@ -321,11 +353,11 @@ export const updateEvent = async (req, res) => {
         mulai_waktu_absensi || null,
         batas_waktu_absensi,
         template_path,
-        certificate_layout ? JSON.stringify(certificate_layout) : null,
+        certificateEnabled && certificate_layout ? JSON.stringify(certificate_layout) : null,
         final_template_id,
         final_template_source,
         JSON.stringify(form_config || {}),
-        official_id || null,
+        certificateEnabled ? official_id || null : null,
         status || existing[0].status,
         id,
       ],

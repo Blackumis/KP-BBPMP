@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { attendanceAPI, certificateAPI, reportAPI } from "../services/api";
 import { downloadPDF } from "../utils/certificateUtils";
 import { showNotification } from "../components/Notification";
@@ -36,6 +36,15 @@ const AttendanceList = ({ event, onBack }) => {
     type: "warning",
   });
 
+  const certificateEnabled = useMemo(() => {
+    try {
+      const parsed = typeof event?.form_config === "string" ? JSON.parse(event.form_config) : event?.form_config || {};
+      return parsed.certificateEnabled !== false;
+    } catch (err) {
+      return true;
+    }
+  }, [event?.form_config]);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -71,10 +80,15 @@ const AttendanceList = ({ event, onBack }) => {
   }, [event.id]);
 
   useEffect(() => {
+    if (!certificateEnabled) {
+      setEmailQueueStatus({ waiting: 0, active: 0 });
+      return () => {};
+    }
+
     fetchEmailQueueStatus();
     queuePollRef.current = setInterval(fetchEmailQueueStatus, 4000);
     return () => clearInterval(queuePollRef.current);
-  }, [fetchEmailQueueStatus]);
+  }, [fetchEmailQueueStatus, certificateEnabled]);
 
   // Helper to set loading state for a specific button action
   const setButtonLoading = (attendanceId, action, loading) => {
@@ -525,7 +539,9 @@ const AttendanceList = ({ event, onBack }) => {
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredAttendances = normalizedQuery
     ? attendances.filter((a) => {
-        const fields = [a.nama_lengkap, a.unit_kerja, a.email, a.nomor_sertifikat, a.status, a.nip, a.nomor_hp];
+        const fields = certificateEnabled
+          ? [a.nama_lengkap, a.unit_kerja, a.email, a.nomor_sertifikat, a.status, a.nip, a.nomor_hp]
+          : [a.nama_lengkap, a.unit_kerja, a.email, a.nip, a.nomor_hp];
         return fields.some((f) => (f || "").toString().toLowerCase().includes(normalizedQuery));
       })
     : attendances;
@@ -569,24 +585,28 @@ const AttendanceList = ({ event, onBack }) => {
           </div>
         </div>
 
-        {/* Event-Level Certificate Actions */}
+        {/* Event-Level Actions */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-4">Manajemen Sertifikat Kegiatan</h3>
-          <div className="flex items-center gap-4 mb-3">
-            <div className="text-sm text-gray-700">
-              Total peserta dengan nomor sertifikat: <span className="font-semibold">{totalWithCertificateNumber}</span>
+          <h3 className="text-lg font-semibold text-blue-900 mb-4">{certificateEnabled ? "Manajemen Sertifikat Kegiatan" : "Manajemen Kegiatan"}</h3>
+          {certificateEnabled ? (
+            <div className="flex items-center gap-4 mb-3">
+              <div className="text-sm text-gray-700">
+                Total peserta dengan nomor sertifikat: <span className="font-semibold">{totalWithCertificateNumber}</span>
+              </div>
+              <div className="text-sm text-green-700">
+                Terkirim: <span className="font-semibold">{sentCount}</span>
+              </div>
+              <div className="text-sm text-orange-700">
+                Belum terkirim: <span className="font-semibold">{remainingCount}</span>
+              </div>
             </div>
-            <div className="text-sm text-green-700">
-              Terkirim: <span className="font-semibold">{sentCount}</span>
-            </div>
-            <div className="text-sm text-orange-700">
-              Belum terkirim: <span className="font-semibold">{remainingCount}</span>
-            </div>
-          </div>
+          ) : (
+            <div></div>
+          )}
           {/* Buttons + Search */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Stop Batch Email — only visible when email jobs are running */}
-            {(emailQueueStatus.waiting > 0 || emailQueueStatus.active > 0) && (
+            {certificateEnabled && (emailQueueStatus.waiting > 0 || emailQueueStatus.active > 0) && (
               <div className="w-full flex items-center justify-between bg-orange-50 border border-orange-300 rounded-lg px-4 py-2 mb-1">
                 <div className="flex items-center gap-2 text-sm text-orange-800">
                   <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
@@ -612,29 +632,33 @@ const AttendanceList = ({ event, onBack }) => {
                 </button>
               </div>
             )}
-            <button
-              onClick={handleGenerateAllCertificates}
-              disabled={eventLoading.generateAll || isLoading || attendances.length === 0}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              Buat Semua Sertifikat
-            </button>
+            {certificateEnabled && (
+              <>
+                <button
+                  onClick={handleGenerateAllCertificates}
+                  disabled={eventLoading.generateAll || isLoading || attendances.length === 0}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  Buat Semua Sertifikat
+                </button>
 
-            <button
-              onClick={handleSendAllCertificates}
-              disabled={eventLoading.sendAll || isLoading || attendances.length === 0}
-              className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              Kirim Semua Sertifikat
-            </button>
+                <button
+                  onClick={handleSendAllCertificates}
+                  disabled={eventLoading.sendAll || isLoading || attendances.length === 0}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  Kirim Semua Sertifikat
+                </button>
 
-            <button
-              onClick={handleSendRemainingCertificates}
-              disabled={eventLoading.sendRemaining || isLoading || remainingCount === 0}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              Kirim Sisa Sertifikat
-            </button>
+                <button
+                  onClick={handleSendRemainingCertificates}
+                  disabled={eventLoading.sendRemaining || isLoading || remainingCount === 0}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  Kirim Sisa Sertifikat
+                </button>
+              </>
+            )}
 
             <button
               onClick={handleGenerateAttendanceReport}
@@ -708,9 +732,9 @@ const AttendanceList = ({ event, onBack }) => {
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Unit</th>
                   <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">No. Sertifikat</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
+                  {certificateEnabled && <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">No. Sertifikat</th>}
+                  {certificateEnabled && <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>}
+                  {certificateEnabled && <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -720,58 +744,61 @@ const AttendanceList = ({ event, onBack }) => {
                     <td className="py-4 px-4 text-sm font-medium text-gray-900">{a.nama_lengkap}</td>
                     <td className="py-4 px-4 text-sm text-gray-500">{a.unit_kerja}</td>
                     <td className="py-4 px-4 text-sm text-gray-500">{a.email}</td>
-                    <td className="py-4 px-4 text-center">
-                      {a.nomor_sertifikat ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{a.nomor_sertifikat}</span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          a.status === "sertifikat_terkirim" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {a.status === "menunggu_sertifikat" ? "Menunggu Sertifikat" : a.status === "sertifikat_terkirim" ? "Sertifikat Terkirim" : a.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <div className="flex justify-center gap-2 flex-wrap">
-                        {/* Generate Button */}
-                        <button
-                          onClick={() => handleGenerateCertificate(a)}
-                          disabled={isButtonLoading(a.id, "generate")}
-                          title="Buat sertifikat untuk peserta ini"
-                          className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition duration-150"
+                    {certificateEnabled && (
+                      <td className="py-4 px-4 text-center">
+                        {a.nomor_sertifikat ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{a.nomor_sertifikat}</span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                    )}
+                    {certificateEnabled && (
+                      <td className="py-4 px-4 text-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            a.status === "sertifikat_terkirim" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                          }`}
                         >
-                          {isButtonLoading(a.id, "generate") ? <span className="inline-block w-3 h-3 border border-blue-700 border-t-transparent rounded-full animate-spin mr-1"></span> : null}
-                          Buat
-                        </button>
+                          {a.status === "menunggu_sertifikat" ? "Menunggu Sertifikat" : a.status === "sertifikat_terkirim" ? "Sertifikat Terkirim" : a.status}
+                        </span>
+                      </td>
+                    )}
+                    {certificateEnabled && (
+                      <td className="py-4 px-4 text-center">
+                        <div className="flex justify-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => handleGenerateCertificate(a)}
+                            disabled={isButtonLoading(a.id, "generate")}
+                            title="Buat sertifikat untuk peserta ini"
+                            className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition duration-150"
+                          >
+                            {isButtonLoading(a.id, "generate") ? <span className="inline-block w-3 h-3 border border-blue-700 border-t-transparent rounded-full animate-spin mr-1"></span> : null}
+                            Buat
+                          </button>
 
-                        {/* Download Button */}
-                        <button
-                          onClick={() => handleDownloadCertificate(a)}
-                          disabled={isButtonLoading(a.id, "download") || !a.nomor_sertifikat}
-                          title={a.nomor_sertifikat ? "Unduh sertifikat" : "Sertifikat belum dibuat"}
-                          className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium hover:bg-green-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition duration-150"
-                        >
-                          {isButtonLoading(a.id, "download") ? <span className="inline-block w-3 h-3 border border-green-700 border-t-transparent rounded-full animate-spin mr-1"></span> : null}
-                          Unduh
-                        </button>
+                          <button
+                            onClick={() => handleDownloadCertificate(a)}
+                            disabled={isButtonLoading(a.id, "download") || !a.nomor_sertifikat}
+                            title={a.nomor_sertifikat ? "Unduh sertifikat" : "Sertifikat belum dibuat"}
+                            className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium hover:bg-green-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition duration-150"
+                          >
+                            {isButtonLoading(a.id, "download") ? <span className="inline-block w-3 h-3 border border-green-700 border-t-transparent rounded-full animate-spin mr-1"></span> : null}
+                            Unduh
+                          </button>
 
-                        {/* Send Button */}
-                        <button
-                          onClick={() => handleSendCertificate(a)}
-                          disabled={isButtonLoading(a.id, "send") || !a.nomor_sertifikat}
-                          title={a.nomor_sertifikat ? "Kirim sertifikat via email" : "Sertifikat belum dibuat"}
-                          className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium hover:bg-orange-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition duration-150"
-                        >
-                          {isButtonLoading(a.id, "send") ? <span className="inline-block w-3 h-3 border border-orange-700 border-t-transparent rounded-full animate-spin mr-1"></span> : null}
-                          Kirim
-                        </button>
-                      </div>
-                    </td>
+                          <button
+                            onClick={() => handleSendCertificate(a)}
+                            disabled={isButtonLoading(a.id, "send") || !a.nomor_sertifikat}
+                            title={a.nomor_sertifikat ? "Kirim sertifikat via email" : "Sertifikat belum dibuat"}
+                            className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium hover:bg-orange-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition duration-150"
+                          >
+                            {isButtonLoading(a.id, "send") ? <span className="inline-block w-3 h-3 border border-orange-700 border-t-transparent rounded-full animate-spin mr-1"></span> : null}
+                            Kirim
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

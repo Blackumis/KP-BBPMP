@@ -140,7 +140,7 @@ export const submitAttendance = async (req, res) => {
     }
 
     // Check if event exists
-    const [events] = await pool.query("SELECT id, status, batas_waktu_absensi, mulai_waktu_absensi, nomor_surat FROM kegiatan WHERE id = ?", [event_id]);
+    const [events] = await pool.query("SELECT id, status, batas_waktu_absensi, mulai_waktu_absensi, nomor_surat, form_config FROM kegiatan WHERE id = ?", [event_id]);
 
     if (events.length === 0) {
       return res.status(404).json({ success: false, message: "Event not found" });
@@ -173,9 +173,20 @@ export const submitAttendance = async (req, res) => {
     const [countResult] = await pool.query("SELECT COUNT(*) as count FROM presensi WHERE event_id = ?", [event_id]);
     const urutan_absensi = countResult[0].count + 1;
 
-    // Generate certificate number format: urutan/nomor_surat with 4-digit padding (0001, 0002, etc.)
-    const paddedUrutan = String(urutan_absensi).padStart(4, "0");
-    const nomor_sertifikat = `${paddedUrutan}/${events[0].nomor_surat}`;
+    let parsedFormConfig = {};
+    try {
+      parsedFormConfig = typeof events[0].form_config === "string" ? JSON.parse(events[0].form_config) : events[0].form_config || {};
+    } catch (err) {
+      parsedFormConfig = {};
+    }
+    const certificateEnabled = parsedFormConfig.certificateEnabled !== false;
+
+    // Generate certificate number only for certificate-enabled events.
+    let nomor_sertifikat = null;
+    if (certificateEnabled) {
+      const paddedUrutan = String(urutan_absensi).padStart(4, "0");
+      nomor_sertifikat = `${paddedUrutan}/${events[0].nomor_surat}`;
+    }
 
     // Sanitize optional fields - convert empty strings or "-" to null
     const sanitizedNIP = nip && nip.trim() !== "" && nip.trim() !== "-" ? nip.trim() : null;

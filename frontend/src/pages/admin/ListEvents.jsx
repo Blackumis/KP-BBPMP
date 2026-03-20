@@ -191,6 +191,15 @@ const ListEvents = () => {
     return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}>{config.label}</span>;
   };
 
+  const getEventMode = (event) => {
+    try {
+      const parsed = typeof event.form_config === "string" ? JSON.parse(event.form_config) : event.form_config || {};
+      return parsed.certificateEnabled === false ? "attendance_only" : "with_certificate";
+    } catch (err) {
+      return "with_certificate";
+    }
+  };
+
   // Fungsi untuk format waktu tersisa
   const getTimeRemaining = (deadline) => {
     if (!deadline) return null;
@@ -329,7 +338,12 @@ const ListEvents = () => {
                     <tr key={event.id} className={`hover:bg-gray-50 transition duration-150 ${isExpired ? "bg-orange-50" : ""}`}>
                       <td className="py-4 px-4 text-center text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                       <td className="py-4 px-4 text-left text-sm font-medium text-gray-900 max-w-50" title={event.nama_kegiatan}>
-                        {event.nama_kegiatan}
+                        <div className="flex items-center gap-2">
+                          <span>{event.nama_kegiatan}</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${getEventMode(event) === "attendance_only" ? "bg-slate-100 text-slate-700" : "bg-blue-100 text-blue-700"}`}>
+                            {getEventMode(event) === "attendance_only" ? "Hanya Absensi" : "+ Sertifikat"}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-4 px-4 text-left text-sm text-gray-500">{event.nomor_surat || "-"}</td>
                       <td className="py-4 px-4 text-left text-sm text-gray-500">

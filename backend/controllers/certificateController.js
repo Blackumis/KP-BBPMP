@@ -9,6 +9,15 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const isCertificateEnabled = (formConfig) => {
+  try {
+    const parsed = typeof formConfig === "string" ? JSON.parse(formConfig) : formConfig || {};
+    return parsed.certificateEnabled !== false;
+  } catch (err) {
+    return true;
+  }
+};
+
 // Generate certificate for single attendance
 export const generateSingleCertificate = async (req, res) => {
   try {
@@ -17,7 +26,7 @@ export const generateSingleCertificate = async (req, res) => {
     // Get attendance and event data with official information
     const [attendances] = await pool.query(
       `SELECT a.*, e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai, 
-              e.template_sertifikat, e.nomor_surat, e.certificate_layout, e.official_id,
+              e.template_sertifikat, e.nomor_surat, e.certificate_layout, e.official_id, e.form_config,
               o.signature_image_path as official_signature_path
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
@@ -34,6 +43,13 @@ export const generateSingleCertificate = async (req, res) => {
     }
 
     const attendance = attendances[0];
+
+    if (!isCertificateEnabled(attendance.form_config)) {
+      return res.status(400).json({
+        success: false,
+        message: "Kegiatan ini menggunakan mode absensi saja (tanpa sertifikat)",
+      });
+    }
 
     // Parse certificate_layout if it's a JSON string
     let certificateLayout = null;
@@ -124,6 +140,13 @@ export const generateEventCertificates = async (req, res) => {
 
     const event = events[0];
 
+    if (!isCertificateEnabled(event.form_config)) {
+      return res.status(400).json({
+        success: false,
+        message: "Kegiatan ini menggunakan mode absensi saja (tanpa sertifikat)",
+      });
+    }
+
     // Parse certificate_layout if it's a JSON string
     let certificateLayout = null;
     try {
@@ -193,7 +216,7 @@ export const sendCertificate = async (req, res) => {
       `SELECT a.*,
               e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai,
               e.template_sertifikat, e.nomor_surat, e.certificate_layout,
-              e.official_id,
+              e.official_id, e.form_config,
               o.signature_image_path as official_signature_path,
               o.signature_qr_path as official_qr_path
        FROM presensi a
@@ -211,6 +234,13 @@ export const sendCertificate = async (req, res) => {
     }
 
     const attendance = attendances[0];
+
+    if (!isCertificateEnabled(attendance.form_config)) {
+      return res.status(400).json({
+        success: false,
+        message: "Kegiatan ini menggunakan mode absensi saja (tanpa sertifikat)",
+      });
+    }
 
     // Require a certificate number to be present
     if (!attendance.nomor_sertifikat) {
@@ -303,6 +333,20 @@ export const sendEventCertificates = async (req, res) => {
   try {
     const { event_id } = req.params;
 
+    const [events] = await pool.query("SELECT form_config FROM kegiatan WHERE id = ?", [event_id]);
+    if (events.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+    if (!isCertificateEnabled(events[0].form_config)) {
+      return res.status(400).json({
+        success: false,
+        message: "Kegiatan ini menggunakan mode absensi saja (tanpa sertifikat)",
+      });
+    }
+
     // Get all attendances that have a certificate number (eligible to receive email).
     // certificate_path is intentionally NOT required here — the email worker will
     // regenerate a fresh PDF before sending so recipients always get the latest version.
@@ -356,6 +400,20 @@ export const sendEventCertificates = async (req, res) => {
 export const sendRemainingEventCertificates = async (req, res) => {
   try {
     const { event_id } = req.params;
+
+    const [events] = await pool.query("SELECT form_config FROM kegiatan WHERE id = ?", [event_id]);
+    if (events.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+    if (!isCertificateEnabled(events[0].form_config)) {
+      return res.status(400).json({
+        success: false,
+        message: "Kegiatan ini menggunakan mode absensi saja (tanpa sertifikat)",
+      });
+    }
 
     // Get all attendances that have a certificate number and are NOT marked as sent
     const [attendances] = await pool.query(
