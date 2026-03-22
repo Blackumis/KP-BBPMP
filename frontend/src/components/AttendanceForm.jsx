@@ -591,7 +591,7 @@ const AttendanceForm = ({ eventId }) => {
         </p>
 
         {/* Certificate Info */}
-        {submitResult && (
+        {config?.certificateEnabled !== false && submitResult?.nomor_sertifikat && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <p className="text-sm text-blue-800">
               <strong>No. Sertifikat:</strong> {submitResult.nomor_sertifikat}
@@ -600,7 +600,9 @@ const AttendanceForm = ({ eventId }) => {
         )}
 
         {/* Info */}
-        <p className="text-gray-500 text-xs mb-4">Sertifikat akan dikirim melalui email setelah kegiatan selesai.</p>
+        <p className="text-gray-500 text-xs mb-4">
+          {config?.certificateEnabled !== false ? "Sertifikat akan dikirim melalui email setelah kegiatan selesai." : "Terima kasih, data kehadiran Anda sudah tercatat."}
+        </p>
 
         {/* Warning */}
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
@@ -613,7 +615,8 @@ const AttendanceForm = ({ eventId }) => {
               />
             </svg>
             <span>
-              Jika email tidak diterima, periksa folder <strong>Spam</strong>.
+              {config?.certificateEnabled !== false ? "Jika email tidak diterima, periksa folder " : "Simpan bukti ini bila diperlukan. Untuk konfirmasi lebih lanjut, hubungi panitia. "}
+              {config?.certificateEnabled !== false && <strong>Spam</strong>}
             </span>
           </p>
         </div>

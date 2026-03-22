@@ -206,6 +206,24 @@ class SimpleQueue extends EventEmitter {
   }
 
   /**
+   * Clear all pending (waiting) jobs from the queue without affecting active jobs
+   * Returns the number of jobs that were removed
+   */
+  clearPending() {
+    const count = this.pendingJobs.length;
+    // Mark each pending job as cancelled
+    for (const jobId of this.pendingJobs) {
+      const job = this.jobs.get(jobId);
+      if (job) {
+        job.status = 'cancelled';
+      }
+    }
+    this.pendingJobs = [];
+    console.log(`Queue "${this.name}" cleared ${count} pending jobs`);
+    return count;
+  }
+
+  /**
    * Get all jobs with optional filters
    */
   getJobs(status = null) {

@@ -167,11 +167,13 @@ export const generateCertificate = async (attendanceData, eventData, templatePat
                     imgX = xPos - fieldWidth;
                   }
                   
-                  // Add image to PDF with proper dimensions
+                  // Add image to PDF with proper dimensions and centered alignment
                   doc.image(imagePath, imgX, yPos, {
                     width: fieldWidth,
                     height: fieldHeight,
                     fit: [fieldWidth, fieldHeight],
+                    align: 'center',
+                    valign: 'center'
                   });
                 }
               }

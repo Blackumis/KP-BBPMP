@@ -191,6 +191,15 @@ const ListEvents = () => {
     return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}>{config.label}</span>;
   };
 
+  const getEventMode = (event) => {
+    try {
+      const parsed = typeof event.form_config === "string" ? JSON.parse(event.form_config) : event.form_config || {};
+      return parsed.certificateEnabled === false ? "attendance_only" : "with_certificate";
+    } catch (err) {
+      return "with_certificate";
+    }
+  };
+
   // Fungsi untuk format waktu tersisa
   const getTimeRemaining = (deadline) => {
     if (!deadline) return null;
@@ -307,9 +316,9 @@ const ListEvents = () => {
               <thead className="bg-gray-100 border-b-2 border-gray-200">
                 <tr>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">No</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Kegiatan</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Nomor Surat</th>
-                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Kegiatan</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nomor Surat</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tanggal</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Batas Waktu Absensi</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Peserta</th>
                   <th className="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
@@ -327,12 +336,17 @@ const ListEvents = () => {
 
                   return (
                     <tr key={event.id} className={`hover:bg-gray-50 transition duration-150 ${isExpired ? "bg-orange-50" : ""}`}>
-                      <td className="py-4 px-4 text-sm text-center text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                      <td className="py-4 px-4 text-sm font-medium text-gray-900 max-w-50" title={event.nama_kegiatan}>
-                        {event.nama_kegiatan}
+                      <td className="py-4 px-4 text-center text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                      <td className="py-4 px-4 text-left text-sm font-medium text-gray-900 max-w-50" title={event.nama_kegiatan}>
+                        <div className="flex items-center gap-2">
+                          <span>{event.nama_kegiatan}</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${getEventMode(event) === "attendance_only" ? "bg-slate-100 text-slate-700" : "bg-blue-100 text-blue-700"}`}>
+                            {getEventMode(event) === "attendance_only" ? "Hanya Absensi" : "+ Sertifikat"}
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-4 px-4 text-sm text-center text-gray-500">{event.nomor_surat || "-"}</td>
-                      <td className="py-4 px-4 text-sm text-center text-gray-500">
+                      <td className="py-4 px-4 text-left text-sm text-gray-500">{event.nomor_surat || "-"}</td>
+                      <td className="py-4 px-4 text-left text-sm text-gray-500">
                         {event.tanggal_mulai ? new Date(event.tanggal_mulai).toLocaleDateString("id-ID", { year: "numeric", month: "short", day: "numeric" }) : "-"}
                       </td>
                       <td className="py-4 px-4 text-sm text-center align-middle">
@@ -373,7 +387,7 @@ const ListEvents = () => {
                       <td className="py-4 px-4 text-center">{getStatusBadge(event)}</td>
                       <td className="py-4 px-4 text-center">
                         <div className="flex justify-center items-center gap-2 flex-wrap">
-                          {event.status === "draft" && (
+                          {actualStatus === "draft" && (
                             <button
                               onClick={() => handleActivate(event.id, event.nama_kegiatan)}
                               className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-200"

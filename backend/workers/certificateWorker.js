@@ -63,10 +63,16 @@ certificateQueue.process(async (job) => {
 
     await job.progress(80);
 
-    // Update attendance record
+    // Update attendance record (only set status to 'menunggu_sertifikat' if not already sent)
     await pool.query(
-      'UPDATE presensi SET certificate_path = ?, status = ? WHERE id = ?',
-      [result.filepath, 'menunggu_sertifikat', attendance_id]
+      `UPDATE presensi 
+       SET certificate_path = ?, 
+           status = CASE 
+             WHEN status = 'sertifikat_terkirim' THEN 'sertifikat_terkirim'
+             ELSE 'menunggu_sertifikat'
+           END
+       WHERE id = ?`,
+      [result.filepath, attendance_id]
     );
 
     await job.progress(100);
@@ -96,8 +102,9 @@ emailQueue.process(async (job) => {
       `SELECT a.*,
               e.nama_kegiatan, e.tanggal_mulai, e.tanggal_selesai,
               e.template_sertifikat, e.nomor_surat, e.certificate_layout,
-              e.official_id, e.official_qr_path,
-              o.signature_image_path as official_signature_path
+              e.official_id,
+              o.signature_image_path as official_signature_path,
+              o.signature_qr_path as official_qr_path
        FROM presensi a
        JOIN kegiatan e ON a.event_id = e.id
        LEFT JOIN pejabat o ON e.official_id = o.id

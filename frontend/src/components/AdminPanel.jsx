@@ -41,6 +41,8 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, template: null });
   const [deletingTemplate, setDeletingTemplate] = useState(false);
   const [formData, setFormData] = useState({
+    certificateEnabled: true,
+
     // Data Kegiatan (matches database schema)
     nomor_surat: "",
     nama_kegiatan: "",
@@ -190,6 +192,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
 
     setFormData((prev) => ({
       ...prev,
+      certificateEnabled: parsedConfig.certificateEnabled ?? true,
       nomor_surat: editEvent.nomor_surat || prev.nomor_surat,
       nama_kegiatan: editEvent.nama_kegiatan || prev.nama_kegiatan,
       tanggal_mulai: formatDate(editEvent.tanggal_mulai),
@@ -239,8 +242,13 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     setError(null);
 
     try {
+      if (formData.certificateEnabled && !formData.templatePreview && !formData.templateFile && !formData.templateId) {
+        throw new Error("Pilih template sertifikat terlebih dahulu untuk mode dengan sertifikat");
+      }
+
       // Build form_config object
       const form_config = {
+        certificateEnabled: formData.certificateEnabled,
         requireName: formData.requireName,
         requireEmail: formData.requireEmail,
         requirePhone: formData.requirePhone,
@@ -265,12 +273,12 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
         jam_selesai: formData.jam_selesai,
         mulai_waktu_absensi: formData.mulai_waktu_absensi || null,
         batas_waktu_absensi: formData.batas_waktu_absensi,
-        official_id: formData.official_id || null,
+        official_id: formData.certificateEnabled ? formData.official_id || null : null,
         form_config,
-        template_source: formData.templateSource,
-        template_id: formData.templateId,
-        template: formData.templateFile,
-        certificate_layout: formData.certificateLayout,
+        template_source: formData.certificateEnabled ? formData.templateSource : null,
+        template_id: formData.certificateEnabled ? formData.templateId : null,
+        template: formData.certificateEnabled ? formData.templateFile : null,
+        certificate_layout: formData.certificateEnabled ? formData.certificateLayout : null,
       };
 
       let response;
@@ -304,6 +312,18 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
     }
   };
 
+  useEffect(() => {
+    if (!formData.certificateEnabled && activeStep === 3) {
+      setActiveStep(2);
+    }
+  }, [formData.certificateEnabled, activeStep]);
+
+  const steps = [
+    { id: 1, label: "1. Data Kegiatan" },
+    { id: 2, label: "2. Atur Absensi" },
+    ...(formData.certificateEnabled ? [{ id: 3, label: "3. Layout Sertifikat" }] : []),
+  ];
+
   return (
     <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-600 my-8">
       {/* Header with Back Button */}
@@ -321,30 +341,66 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
 
       {/* Progress Stepper */}
       <div className="flex mb-8">
-        <div
-          className={`flex-1 py-2 text-center border-b-4 cursor-pointer ${activeStep === 1 ? "border-blue-600 text-blue-700 font-bold" : "border-gray-200 text-gray-500"}`}
-          onClick={() => setActiveStep(1)}
-        >
-          1. Data Kegiatan
-        </div>
-        <div
-          className={`flex-1 py-2 text-center border-b-4 cursor-pointer ${activeStep === 2 ? "border-blue-600 text-blue-700 font-bold" : "border-gray-200 text-gray-500"}`}
-          onClick={() => setActiveStep(2)}
-        >
-          2. Atur Absensi
-        </div>
-        <div
-          className={`flex-1 py-2 text-center border-b-4 cursor-pointer ${activeStep === 3 ? "border-blue-600 text-blue-700 font-bold" : "border-gray-200 text-gray-500"}`}
-          onClick={() => setActiveStep(3)}
-        >
-          3. Layout Sertifikat
-        </div>
+        {steps.map((step) => (
+          <div
+            key={step.id}
+            className={`flex-1 py-2 text-center border-b-4 cursor-pointer ${activeStep === step.id ? "border-blue-600 text-blue-700 font-bold" : "border-gray-200 text-gray-500"}`}
+            onClick={() => setActiveStep(step.id)}
+          >
+            {step.label}
+          </div>
+        ))}
       </div>
 
       <form onSubmit={handleSubmit}>
         {/* Step 1: Data Kegiatan */}
         {activeStep === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-sm font-bold text-blue-800 mb-3">Mode Kegiatan</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className={`border rounded-lg p-3 cursor-pointer transition ${formData.certificateEnabled ? "border-blue-500 bg-white shadow-sm" : "border-gray-200 bg-white hover:border-blue-300"}`}>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="event_mode"
+                      checked={formData.certificateEnabled}
+                      onChange={() => setFormData((prev) => ({ ...prev, certificateEnabled: true }))}
+                      className="mt-1"
+                    />
+                    <div>
+                      <p className="font-semibold text-gray-800">Absensi + Sertifikat</p>
+                    </div>
+                  </div>
+                </label>
+                <label className={`border rounded-lg p-3 cursor-pointer transition ${!formData.certificateEnabled ? "border-blue-500 bg-white shadow-sm" : "border-gray-200 bg-white hover:border-blue-300"}`}>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="event_mode"
+                      checked={!formData.certificateEnabled}
+                      onChange={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          certificateEnabled: false,
+                          official_id: "",
+                          templateId: null,
+                          templateFile: null,
+                          templatePreview: null,
+                          templateName: null,
+                          certificateLayout: null,
+                        }))
+                      }
+                      className="mt-1"
+                    />
+                    <div>
+                      <p className="font-semibold text-gray-800">Hanya Absensi</p>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -449,31 +505,34 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Pejabat Penandatangan</label>
-                <select
-                  name="official_id"
-                  value={formData.official_id}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                >
-                  <option value="">Pilih Pejabat (Opsional)</option>
-                  {officials.map((official) => (
-                    <option key={official.id} value={official.id}>
-                      {official.name} - {official.position}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">Pilih pejabat yang akan menandatangani sertifikat. Tanda tangan akan ditambahkan secara otomatis pada sertifikat.</p>
-              </div>
+              {formData.certificateEnabled && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Pejabat Penandatangan</label>
+                  <select
+                    name="official_id"
+                    value={formData.official_id}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  >
+                    <option value="">Pilih Pejabat (Opsional)</option>
+                    {officials.map((official) => (
+                      <option key={official.id} value={official.id}>
+                        {official.name} - {official.position}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Pilih pejabat yang akan menandatangani sertifikat. Tanda tangan akan ditambahkan secara otomatis pada sertifikat.</p>
+                </div>
+              )}
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Template / Background Sertifikat</label>
-              {/* Template Selection Section */}
-              {formData.templateSource === "template" && (
-                <div>
-                  {loadingTemplates ? (
+            {formData.certificateEnabled ? (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Template / Background Sertifikat</label>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">Pilih Template</label>
+                {loadingTemplates ? (
                     <div className="text-center py-8 text-gray-500 border border-gray-200 rounded-lg bg-gray-50">
                       <svg className="animate-spin h-8 w-8 mx-auto mb-2 text-blue-600" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -504,7 +563,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     </div>
                   ) : (
                     <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-80 overflow-y-auto p-2">
                         {templates.map((template) => {
                           const imageUrl = `${SERVER_BASE_URL}/${template.image_path}`;
                           const isSelected = formData.templateId === template.id;
@@ -512,7 +571,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                             <div
                               key={template.id}
                               className={`relative cursor-pointer rounded-lg overflow-hidden transition-all shadow-sm hover:shadow-md group ${
-                                isSelected ? "ring-2 ring-blue-500 ring-offset-2 bg-white" : "bg-white border border-gray-200 hover:border-blue-300"
+                                isSelected ? "ring-2 ring-blue-500 bg-white" : "bg-white border border-gray-200 hover:border-blue-300"
                               }`}
                             >
                               <div
@@ -523,6 +582,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                                     templatePreview: imageUrl,
                                     templateName: template.name,
                                     templateFile: null,
+                                    templateSource: 'template',
                                   }));
                                 }}
                                 className="relative h-20 bg-gray-100"
@@ -551,6 +611,7 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                                       templatePreview: imageUrl,
                                       templateName: template.name,
                                       templateFile: null,
+                                      templateSource: 'template',
                                     }));
                                   }}
                                   className={`text-xs font-medium truncate flex-1 ${isSelected ? "text-blue-700" : "text-gray-700"}`}
@@ -593,20 +654,6 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                     </div>
                   )}
                 </div>
-              )}
-
-              {formData.templateName && formData.templateSource === "upload" && (
-                <p className="text-xs text-green-600 mt-3 flex items-center bg-green-50 px-3 py-2 rounded-md">
-                  <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  File terpilih: {formData.templateName}
-                </p>
-              )}
               {formData.templateId && formData.templateSource === "template" && (
                 <p className="text-xs text-green-600 mt-3 flex items-center bg-green-50 px-3 py-2 rounded-md">
                   <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
@@ -619,7 +666,11 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
                   Template dipilih: {formData.templateName}
                 </p>
               )}
-            </div>
+              </div>
+            ) : (
+              <div>
+              </div>
+            )}
 
             <div className="flex justify-end pt-4">
               <button type="button" onClick={() => setActiveStep(2)} className="bg-blue-700 text-white px-6 py-2 rounded-md hover:bg-blue-800 transition font-medium">
@@ -681,9 +732,19 @@ const AdminPanel = ({ onSaveConfig, editEvent = null, onBack }) => {
               <button type="button" onClick={() => setActiveStep(1)} className="text-gray-600 px-6 py-2 rounded-md hover:bg-gray-100 transition font-medium">
                 ← Kembali
               </button>
-              <button type="button" onClick={() => setActiveStep(3)} className="bg-blue-700 text-white px-6 py-2 rounded-md hover:bg-blue-800 transition font-medium">
-                Lanjut: Layout Sertifikat →
-              </button>
+              {formData.certificateEnabled ? (
+                <button type="button" onClick={() => setActiveStep(3)} className="bg-blue-700 text-white px-6 py-2 rounded-md hover:bg-blue-800 transition font-medium">
+                  Lanjut: Layout Sertifikat →
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="bg-green-600 text-white px-8 py-2 rounded-md hover:bg-green-700 transition font-bold shadow-md transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isLoading ? "Menyimpan..." : editEvent ? "Update Kegiatan" : "Simpan Kegiatan"}
+                </button>
+              )}
             </div>
           </div>
         )}
