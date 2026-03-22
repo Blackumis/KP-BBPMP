@@ -387,7 +387,7 @@ const ListEvents = () => {
                       <td className="py-4 px-4 text-center">{getStatusBadge(event)}</td>
                       <td className="py-4 px-4 text-center">
                         <div className="flex justify-center items-center gap-2 flex-wrap">
-                          {event.status === "draft" && (
+                          {actualStatus === "draft" && (
                             <button
                               onClick={() => handleActivate(event.id, event.nama_kegiatan)}
                               className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-200"
