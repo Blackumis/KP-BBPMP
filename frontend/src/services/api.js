@@ -1,4 +1,12 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const getDefaultApiBaseUrl = () => {
+  // In production with same-origin hosting, /api is the safest default.
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}/api`;
+  }
+  return "http://localhost:5000/api";
+};
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL || getDefaultApiBaseUrl()).replace(/\/$/, "");
 
 // Base server URL without /api suffix (for asset/image URLs)
 const SERVER_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -9,6 +17,45 @@ export { API_BASE_URL, SERVER_BASE_URL };
 const getToken = () => localStorage.getItem("token");
 const setToken = (token) => localStorage.setItem("token", token);
 const removeToken = () => localStorage.removeItem("token");
+
+const readResponseText = async (response) => {
+  try {
+    return await response.text();
+  } catch (err) {
+    return "";
+  }
+};
+
+const extractErrorMessage = (fallbackMessage, rawText = "") => {
+  if (!rawText) return fallbackMessage;
+
+  const looksLikeHtml = /^\s*</.test(rawText);
+  if (looksLikeHtml) {
+    return "Server mengembalikan HTML, bukan respons API. Periksa konfigurasi VITE_API_URL dan routing /api di deployment.";
+  }
+
+  try {
+    const parsed = JSON.parse(rawText);
+    return parsed.message || fallbackMessage;
+  } catch (err) {
+    return fallbackMessage;
+  }
+};
+
+const parseJsonResponse = async (response, fallbackMessage) => {
+  const rawText = await readResponseText(response);
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(extractErrorMessage(fallbackMessage, rawText));
+  }
+
+  try {
+    return rawText ? JSON.parse(rawText) : {};
+  } catch (err) {
+    throw new Error(extractErrorMessage(fallbackMessage, rawText));
+  }
+};
 
 const fetchWithAuth = async (endpoint, options = {}) => {
   const token = getToken();
@@ -25,7 +72,7 @@ const fetchWithAuth = async (endpoint, options = {}) => {
     headers,
   });
 
-  const data = await response.json();
+  const data = await parseJsonResponse(response, "Gagal memproses respons API");
 
   if (!response.ok) {
     throw new Error(data.message || "Something went wrong");
@@ -44,7 +91,7 @@ const fetchPublic = async (endpoint, options = {}) => {
     headers,
   });
 
-  const data = await response.json();
+  const data = await parseJsonResponse(response, "Gagal memproses respons API publik");
 
   if (!response.ok) {
     throw new Error(data.message || "Something went wrong");
@@ -266,10 +313,18 @@ export const certificateAPI = {
   downloadByCertificateNumber: async (certificateNumber) => {
     const encodedCertNumber = encodeURIComponent(certificateNumber);
     const response = await fetch(`${API_BASE_URL}/certificates/download/${encodedCertNumber}`);
+
     if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.message || "Failed to download certificate");
+      const rawText = await readResponseText(response);
+      throw new Error(extractErrorMessage("Gagal mengunduh sertifikat", rawText));
     }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/pdf")) {
+      const rawText = await readResponseText(response);
+      throw new Error(extractErrorMessage("Respons unduhan bukan file PDF", rawText));
+    }
+
     return await response.blob();
   },
 

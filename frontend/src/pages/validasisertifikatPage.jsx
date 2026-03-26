@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { API_BASE_URL } from "../services/api";
+import { certificateAPI } from "../services/api";
 
 const ValidasiSertifikat = () => {
   const location = useLocation();
@@ -19,15 +19,7 @@ const ValidasiSertifikat = () => {
   const handleDownloadPDF = async () => {
     try {
       setDownloading(true);
-      const encodedCertNumber = encodeURIComponent(certificateNumber);
-      const response = await fetch(`${API_BASE_URL}/certificates/download/${encodedCertNumber}`);
-
-      if (!response.ok) {
-        throw new Error("Gagal mengunduh sertifikat");
-      }
-
-      // Get the blob from response
-      const blob = await response.blob();
+      const blob = await certificateAPI.downloadByCertificateNumber(certificateNumber);
 
       // Create a link element and trigger download
       const url = window.URL.createObjectURL(blob);
@@ -53,9 +45,7 @@ const ValidasiSertifikat = () => {
     const validateCertificate = async () => {
       try {
         setLoading(true);
-        const encodedCertNumber = encodeURIComponent(certificateNumber);
-        const response = await fetch(`${API_BASE_URL}/certificates/validate/${encodedCertNumber}`);
-        const data = await response.json();
+        const data = await certificateAPI.validate(certificateNumber);
 
         if (data.success && data.valid) {
           setValidationData(data.data);
