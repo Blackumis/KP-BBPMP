@@ -181,6 +181,14 @@ Frontend akan berjalan di `http://localhost:5173`
 
 ### Mode Production
 
+**Set Environment Frontend Production (wajib):**
+Pastikan file `frontend/.env.production` berisi:
+
+```env
+VITE_API_URL=https://presensi.bbpmpjateng.id/api
+VITE_BASE_URL=https://presensi.bbpmpjateng.id
+```
+
 **Build Frontend:**
 ```bash
 cd frontend
